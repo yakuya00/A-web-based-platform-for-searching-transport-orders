@@ -7,7 +7,11 @@ const logger = require("morgan")
 
 
 const app = express();
-const usersRouters = require("./modules/users/user.router");
+
+const authRouter = require("./modules/auth/auth.routes");
+const usersRouter = require("./modules/users/user.routes");
+
+const errorHandler = require("./middlewares/errorHandler");
 
 app.use(logger('dev'));
 app.use(cors());
@@ -16,20 +20,10 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
+app.use("/auth", authRouter);
 app.use("/users", usersRouter);
 
 
-// catch 404 and forward to error handler
-app.use(function(req, res, next) {
-  next(createError(404));
-});
-
-app.use(function(err, req, res, next) {
-  res.status(err.status || 500);
-  res.json({
-    message: err.message,
-    error: req.app.get('env') === 'development' ? err : {}
-  });
-});
+app.use(errorHandler);
 
 module.exports = app;

@@ -1,5 +1,5 @@
-const z = require("zod");
-const { mobileRegex, passwordRegex} = require("../../config/regexConfig");
+import z from "zod";
+import { mobileRegex, passwordRegex} from "../../config/regexConfig.js";
 
 
 export const registerSchema = z.object({

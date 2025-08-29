@@ -1,6 +1,5 @@
-const bcrypt = require("bcrypt");
-const asyncHandler = require("express-async-handler");
+import asyncHandler from "express-async-handler";
 
-exports.checkAuthentication = asyncHandler(async(req, res, next) => {
+export const checkAuthentication = asyncHandler(async(req, res, next) => {
     const { email, password } = req.body;
 })

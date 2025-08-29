@@ -1,6 +1,6 @@
-const AppError = require("../utils/AppError");
+import createError from "http-errors";
 
-exports.validateRequest = (schema) => {
+export const validateRequest = (schema) => {
     return (req, res, next) => {
         try {
             schema.parse({
@@ -10,7 +10,7 @@ exports.validateRequest = (schema) => {
             next()
         } catch (error) {
             console.log({ error });
-            throw new AppError(error?.message || "Validation failed", 400)
+            throw createError(error?.message || "Validation failed", 400)
         }
     };
 };

@@ -1,7 +1,8 @@
-const app = require("./app");
-const debug = require("debug")("web-platform:server");
-const http = require("http");
+import debugLib from "debug";
+import http from "http";
+import app from "./app.js";
 
+const debug = debugLib("web-platform:server");
 const port = normalizePort(process.env.PORT || "5000");
 app.set("port", port);
 

@@ -43,10 +43,10 @@ export const sendPasswordResetEmail = async (to, token) => {
 
 const getTransporter = () => {
     return nodemailer.createTransport({
-        host: "gmail",
+        service: "gmail",
         auth: {
             user: process.env.EMAIL_USER,
-            password: process.env.EMAIL_PASSWORD
+            pass: process.env.EMAIL_PASSWORD
         }
     });
 };

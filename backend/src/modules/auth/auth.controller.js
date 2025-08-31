@@ -44,8 +44,12 @@ export const register = asyncHandler(async(req, res, next) => {
     }
 
     const hashedPassword = await hashPassword(password);
+    const token = generateRandomToken();
+    const verificationTokenExpiresAt = new Date(Date.now() + EMAIL_VERIFICATION_EXPIRATION_TIME);
 
-    await pool.query("INSERT INTO users (name, surname, birthday, phone, email, password_hash, company_id, role_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *", [name, surname, birthday, phone, email, hashedPassword, company_id, role_id]);
+    await pool.query("INSERT INTO users (name, surname, birthday, phone, email, password_hash, verification_token, verification_token_expires_at, company_id, role_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *", [name, surname, birthday, phone, email, hashedPassword, token, verificationTokenExpiresAt, company_id, role_id]);
+
+    await sendVerificationEmail(email, token);
 
     res.status(201).json({
         message: "Registration is succesfully",
@@ -96,7 +100,7 @@ export const resendVerificationEmail = asyncHandler(async (req, res, next) => {
         throw createError(400, "User already verified");
     }
     const token = generateRandomToken();
-    const verificationTokenExpiresAt = Date.now() + EMAIL_VERIFICATION_EXPIRATION_TIME;
+    const verificationTokenExpiresAt = new Date(Date.now() + EMAIL_VERIFICATION_EXPIRATION_TIME);
 
     await pool.query(`
         UPDATE users
@@ -123,7 +127,7 @@ export const forgotPassword = asyncHandler(async (req, res, next) => {
     }
     const user = result.rows[0];
     const token = generateRandomToken();
-    const resetTokenExpiresAt = Date.now() + RESET_PASSWORD_EXPIRATION_TIME;
+    const resetTokenExpiresAt = new Date(Date.now() + RESET_PASSWORD_EXPIRATION_TIME);
 
     await pool.query(`
         UPDATE users
@@ -148,7 +152,7 @@ export const resetPassword = asyncHandler(async (req, res, next) => {
         SELECT * 
         FROM users 
         WHERE reset_password_token = $1
-        AND verification_token_expires_at > NOW()`, [token]);
+        AND reset_password_token_expires_at > NOW()`, [token]);
     if(result.rows.length === 0) {
         throw createError(400, "Invalid or expired token");
     }
@@ -163,7 +167,7 @@ export const resetPassword = asyncHandler(async (req, res, next) => {
         SET password_hash = $1,
             reset_password_token = NULL,
             reset_password_token_expires_at = NULL
-        WHERE id = $2`, [password, user.id]);
+        WHERE id = $2`, [hashedPassword, user.id]);
 
     res.status(200).json({
         message: "Password reset successfully",

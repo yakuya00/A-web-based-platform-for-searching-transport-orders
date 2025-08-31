@@ -24,7 +24,7 @@ router.post("/resend-verification-email",
 router.post("/forgot-password",
     forgotPassword);
 
-router.get("/reset-password",
+router.post("/reset-password",
     resetPassword); 
 
 export default router;

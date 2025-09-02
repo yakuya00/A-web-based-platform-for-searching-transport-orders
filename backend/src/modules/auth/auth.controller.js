@@ -1,10 +1,18 @@
 import asyncHandler from "express-async-handler";
 import createError from "http-errors";
+import {sql} from "slonik";
 
 import pool from "../../config/db.js";
 import { comparePasswords, generateUserToken, hashPassword } from "../../utils/auth.js";
-import { generateRandomToken } from "../../utils/token.js";
+import { generateRandomToken, hashToken } from "../../utils/token.js";
 import { sendVerificationEmail, sendPasswordResetEmail } from "../../utils/email.js";
+
+
+export const PURPOSES = {
+  EMAIL_VERIFICATION: 1,
+  PASSWORD_RESET: 2,
+  REFRESH_TOKEN: 3,
+};
 
 const EMAIL_VERIFICATION_EXPIRATION_TIME = 24 * 60 * 60 * 1000; // 24 hours
 const RESET_PASSWORD_EXPIRATION_TIME = 24 * 60 * 60 * 1000; // 24 hours
@@ -13,14 +21,12 @@ export const login = asyncHandler(async (req, res, next) => {
     const { email, password } = req.body;
 
     // 1. Find user by email
-    const result = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
-    if (result.rows.length === 0){
+    const user = await pool.maybeOne(sql`SELECT * FROM users WHERE email = ${email}`);
+    if (!user){
         throw createError(404, "User not found");
     }
 
-    //2. Compare password
-    const user = result.rows[0];
-    const isPasswordValid = await comparePasswords(password, user?.password_hash);
+    const isPasswordValid = await comparePasswords(password, user.password_hash);
     
     if(!isPasswordValid) {
         throw createError(401, "Incorrect password");
@@ -37,19 +43,32 @@ export const register = asyncHandler(async(req, res, next) => {
     if(!name || !surname || !birthday || !phone || !email || !password || !company_id || !role_id) {
         throw createError(400, "Some required fields are missing");
     }
-
-    const existingUser = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
-    if(existingUser.rows.length > 0) {
+    const existingUser = await pool.maybeOne(sql`SELECT * FROM users WHERE email = ${email}`);
+    if(existingUser) {
         throw createError(409, "Email already in use");
     }
-
     const hashedPassword = await hashPassword(password);
-    const token = generateRandomToken();
+    const verificationToken = generateRandomToken();
+    const hashedVerificationToken = hashToken(verificationToken);
     const verificationTokenExpiresAt = new Date(Date.now() + EMAIL_VERIFICATION_EXPIRATION_TIME);
+    const metadata = {
+        id: req.ip,
+        userAgent: req.headers["user-agent"]
+    };
+    const user = await pool.transaction(async(trx) => {
+        const user = await trx.one(sql`
+            INSERT INTO users 
+            (name, surname, birthday, phone, email, password_hash, company_id, role_id) 
+            VALUES (${name}, ${surname}, ${birthday}, ${phone}, ${email}, ${hashedPassword}, ${company_id}, ${role_id}) 
+            RETURNING id, email`);
+        await trx.query(sql`
+            INSERT INTO user_tokens
+            (user_id, purpose_id, token_hash, expires_at, metadata)
+            VALUES (${user.id}, ${PURPOSES.EMAIL_VERIFICATION}, ${hashedVerificationToken}, ${verificationTokenExpiresAt}, ${sql.json(metadata)})`);
+        return user;
+    });
 
-    await pool.query("INSERT INTO users (name, surname, birthday, phone, email, password_hash, verification_token, verification_token_expires_at, company_id, role_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *", [name, surname, birthday, phone, email, hashedPassword, token, verificationTokenExpiresAt, company_id, role_id]);
-
-    await sendVerificationEmail(email, token);
+    await sendVerificationEmail(user.email, verificationToken);
 
     res.status(201).json({
         message: "Registration is succesfully",
@@ -58,25 +77,26 @@ export const register = asyncHandler(async(req, res, next) => {
 });
 
 export const verifyEmail = asyncHandler(async (req, res, next) => {
-    const token = req?.query.token;
-
+    const token = req?.query?.token;
+    
     if(!token) {
         throw createError(400, "Token is required");
     }
+    const hashedToken = hashToken(token);
+    const result = await pool.maybeOne(sql`
+        WITH verified_token AS (
+            UPDATE user_tokens
+            SET consumed_at = NOW()
+            WHERE token_hash = ${hashedToken}
+            AND purpose_id = ${PURPOSES.EMAIL_VERIFICATION}
+            AND expires_at > NOW()
+            RETURNING user_id)
+        UPDATE users
+        SET is_verified = TRUE
+        WHERE id IN (SELECT user_id FROM verified_token)
+        RETURNING *`);
 
-    const result = await pool.query(
-        `UPDATE users
-         SET is_verified = TRUE,
-             verification_token = NULL,
-             verification_token_expires_at = NULL
-         WHERE verification_token = $1
-           AND verification_token_expires_at > NOW()
-           AND is_verified = FALSE
-         RETURNING id, email, is_verified`,
-        [token]
-    );
-
-    if (result.rows.length === 0){
+    if (!result){
         throw createError(400, "Invalid or expired token");
     }
 
@@ -91,24 +111,27 @@ export const resendVerificationEmail = asyncHandler(async (req, res, next) => {
     if (!email) {
         throw createError(400, "Email is required");
     }
-    const result = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
-    if(result.rows.length === 0) {
+    const user = await pool.maybeOne(sql`SELECT * FROM users WHERE email = ${email}`);
+    if(!user) {
         throw createError(404, "User not found");
     }
-    const user = result.rows[0];
     if(user.is_verified){
         throw createError(400, "User already verified");
     }
-    const token = generateRandomToken();
-    const verificationTokenExpiresAt = new Date(Date.now() + EMAIL_VERIFICATION_EXPIRATION_TIME);
 
-    await pool.query(`
-        UPDATE users
-        SET verification_token = $1,
-            verification_token_expires_at = $2
-        WHERE id = $3`, [token, verificationTokenExpiresAt, user.id]);
-    
-    await sendVerificationEmail(email, token);
+    const verificationToken = generateRandomToken();
+    const hashedVerificationToken = hashToken(verificationToken);
+    const verificationTokenExpiresAt = new Date(Date.now() + EMAIL_VERIFICATION_EXPIRATION_TIME);
+    const metadata = {
+        id: req.ip,
+        userAgent: req.headers["user-agent"]
+    };
+
+    await pool.query(sql`
+        INSERT INTO user_tokens
+        (user_id, purpose_id, token_hash, expires_at, metadata)
+        VALUES (${user.id}, ${PURPOSES.EMAIL_VERIFICATION}, ${hashedVerificationToken}, ${verificationTokenExpiresAt}, ${sql.json(metadata)})`);
+    await sendVerificationEmail(email, verificationToken);
 
     res.status(200).json({
         message: "Verification email resent successfully",
@@ -121,21 +144,24 @@ export const forgotPassword = asyncHandler(async (req, res, next) => {
     if (!email) {
         throw createError(400, "Email is required");
     }
-    const result = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
-    if(result.rows.length === 0) {
+    const user = await pool.maybeOne(sql`SELECT * FROM users WHERE email = ${email}`);
+    if(!user) {
         throw createError(404, "User not found");
     }
-    const user = result.rows[0];
-    const token = generateRandomToken();
-    const resetTokenExpiresAt = new Date(Date.now() + RESET_PASSWORD_EXPIRATION_TIME);
 
-    await pool.query(`
-        UPDATE users
-        SET reset_password_token = $1,
-            reset_password_token_expires_at = $2
-        WHERE id = $3`, [token, resetTokenExpiresAt, user.id]);
-    
-    await sendPasswordResetEmail(email, token);
+    const resetToken = generateRandomToken();
+    const hashedResetToken = hashToken(resetToken);
+    const resetTokenExpiresAt = new Date(Date.now() + RESET_PASSWORD_EXPIRATION_TIME);
+    const metadata = {
+        id: req.ip,
+        userAgent: req.headers["user-agent"]
+    };
+    await pool.query(sql`
+        INSERT INTO user_tokens
+        (user_id, purpose_id, token_hash, expires_at, metadata)
+        VALUES (${user.id}, ${PURPOSES.PASSWORD_RESET}, ${hashedResetToken}, ${resetTokenExpiresAt}, ${sql.json(metadata)})`);
+
+    await sendPasswordResetEmail(email, resetToken);
 
     res.status(200).json({
         message: "Reset password email sent successfully",
@@ -148,26 +174,33 @@ export const resetPassword = asyncHandler(async (req, res, next) => {
     if(!token || !password) {
         throw createError(400, "Missing token or password");
     }
-    const result = await pool.query(`
-        SELECT * 
-        FROM users 
-        WHERE reset_password_token = $1
-        AND reset_password_token_expires_at > NOW()`, [token]);
-    if(result.rows.length === 0) {
-        throw createError(400, "Invalid or expired token");
-    }
-
-    if(!password) {
-        throw createError(400, "Password is required");
-    }
+    const hashedToken = hashToken(token);
     const hashedPassword = await hashPassword(password);
-    const user = result.rows[0];
-    await pool.query(`
-        UPDATE users
-        SET password_hash = $1,
-            reset_password_token = NULL,
-            reset_password_token_expires_at = NULL
-        WHERE id = $2`, [hashedPassword, user.id]);
+
+    await pool.transaction(async (trx) => {
+        const tokenRow = await trx.maybeOne(sql`
+            SELECT * 
+            FROM user_tokens 
+            WHERE token_hash = ${hashedToken}
+            AND purpose_id = ${PURPOSES.PASSWORD_RESET}
+            AND expires_at > NOW()
+            AND consumed_at IS NULL`);
+
+        if(!tokenRow) {
+            throw createError(400, "Invalid or expired token");
+        }
+        
+        await trx.query(sql`
+            UPDATE users
+            SET password_hash = ${hashedPassword}
+            WHERE id = ${tokenRow.user_id}`);
+
+        await trx.query(sql`
+            UPDATE user_tokens
+            SET consumed_at = NOW()
+            WHERE id = ${tokenRow.id}`);
+    });
+    
 
     res.status(200).json({
         message: "Password reset successfully",

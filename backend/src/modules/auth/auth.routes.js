@@ -1,7 +1,7 @@
 import express from "express";
 
 // Require to auth controllers.
-import {register, login, verifyEmail, resendVerificationEmail, forgotPassword, resetPassword} from "./auth.controller.js";
+import { register, login, verifyEmail, resendVerificationEmail, forgotPassword, resetPassword } from "./auth.controller.js";
 import { validateRequest } from "../../middlewares/validateRequest.js";
 import { registerSchema, loginSchema } from "./auth.validation.js";
 

@@ -3,19 +3,41 @@ import createError from "http-errors";
 
 import pool from "../../config/db.js";
 import { runTransaction } from "../../utils/dbUtils.js";
-import { comparePasswords, generateUserToken, hashPassword, getUserByEmail, validateUser, createAndInsertUserToken } from "../../utils/auth.js";
+import { 
+    comparePasswords, 
+    generateAccessToken, 
+    generateRefreshToken, 
+    verifyToken,
+    hashPassword, 
+    getUserByEmail, 
+    validateUser, 
+    setRefreshTokenCookie
+    } from "../../utils/auth.js";
 import { generateRandomToken, hashToken } from "../../utils/token.js";
 import { sendVerificationEmail, sendPasswordResetEmail } from "../../utils/email.js";
+import { 
+    insertRefreshToken,
+    deleteRefreshToken,
+    createUser,
+    createAndInsertUserToken, 
+    selectRefreshToken, 
+    updateRefreshToken,
+    verifyEmailByToken,
+    selectUserToken,
+    updateUserPassword,
+    markTokenAsConsumed
+    } from "./auth.repository.js";
+import { jwt } from "zod";
 
 
 export const PURPOSES = {
   EMAIL_VERIFICATION: 1,
   PASSWORD_RESET: 2,
-  REFRESH_TOKEN: 3,
 };
 
 const EMAIL_VERIFICATION_EXPIRATION_TIME = 24 * 60 * 60 * 1000; // 24 hours
 const RESET_PASSWORD_EXPIRATION_TIME = 24 * 60 * 60 * 1000; // 24 hours
+const REFRESH_TOKEN_EXPIRATION_TIME = 30 * 24 * 60 * 60 * 1000 // 30 days
 
 export const login = asyncHandler(async (req, res, next) => {
     const { email, password } = req.body;
@@ -29,26 +51,57 @@ export const login = asyncHandler(async (req, res, next) => {
     }
 
     // 3. Generate and return token
-    const token = generateUserToken(user);
-    res.status(200).json({ token });
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
+    const refreshTokenExpiresAt = new Date(Date.now() + REFRESH_TOKEN_EXPIRATION_TIME);
+    const metadata = {
+        id: req.ip,
+        userAgent: req.headers["user-agent"]
+    };
+
+    await insertRefreshToken(user.id, hashToken(refreshToken), metadata, refreshTokenExpiresAt);
+    setRefreshTokenCookie(res, refreshToken, REFRESH_TOKEN_EXPIRATION_TIME);
+    res.status(200).json({ accessToken });
 });
 
-export const register = asyncHandler(async(req, res, next) => {
-    const { name, surname, birthday, phone, email, password, company_id, role_id } = req.body;
-    if(!name || !surname || !birthday || !phone || !email || !password || !company_id || !role_id) {
-        throw createError(400, "Some required fields are missing");
+export const logout = asyncHandler(async (req, res, next) => {
+    const refreshToken = req.cookies.refreshToken;
+    if (refreshToken) {
+        await deleteRefreshToken(hashToken(refreshToken));
     }
+
+    res.clearCookie("refreshToken");
+    res.status(200).json({
+        message: "Logged out",
+        error: false
+    });
+});
+
+export const register = asyncHandler(async (req, res, next) => {
+    const { 
+        name, 
+        surname, 
+        birthday, 
+        phone, 
+        email, 
+        password, 
+        company_id, 
+        role_id
+    } = req.body;
 
     await validateUser(email, { mustNotExist: true });
 
     const hashedPassword = await hashPassword(password);
     const user = await runTransaction(async (client) => {
-        const { rows: [user] } = await client.query(`
-            INSERT INTO users (name, surname, birthday, phone, email, password_hash, company_id, role_id)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-            RETURNING id,email`,
-            [name, surname, birthday, phone, email, hashedPassword, company_id, role_id]);
-        const token = await createAndInsertUserToken(user.id, PURPOSES.EMAIL_VERIFICATION, EMAIL_VERIFICATION_EXPIRATION_TIME, req, client);
+
+        const user = await createUser(name, surname, birthday, phone, email, hashedPassword, company_id, role_id, client);
+        const token = await createAndInsertUserToken( 
+            req, 
+            user.id, 
+            PURPOSES.EMAIL_VERIFICATION, 
+            EMAIL_VERIFICATION_EXPIRATION_TIME,
+            client);
+
         return { email: user.email, verificationToken: token };
     });
 
@@ -60,26 +113,36 @@ export const register = asyncHandler(async(req, res, next) => {
     });
 });
 
+export const refreshToken = asyncHandler(async (req, res, next) => {
+    const refreshToken = req.cookies.refreshToken;
+
+    if (!refreshToken) {
+        throw createError(401, "No refresh token");
+    }
+
+    const result = await selectRefreshToken(hashToken(refreshToken));
+
+    if(result.rowCount === 0) {
+        throw createError(403, "Invalid refresh token")
+    }
+
+    const { exp, iat, ...rest } = verifyToken(refreshToken);
+    console.log(rest);
+    const accessToken = generateAccessToken(rest);
+    const newRefreshToken = generateRefreshToken(rest);
+    const newRefreshTokenExpiresAt = new Date(Date.now() + REFRESH_TOKEN_EXPIRATION_TIME);
+    await updateRefreshToken(hashToken(newRefreshToken), newRefreshTokenExpiresAt, rest.id, hashToken(refreshToken));
+    setRefreshTokenCookie(res, newRefreshToken, REFRESH_TOKEN_EXPIRATION_TIME);
+    res.status(200).json({ accessToken });
+});
+
 export const verifyEmail = asyncHandler(async (req, res, next) => {
     const token = req?.query?.token;
     
     if(!token) {
         throw createError(400, "Token is required");
     }
-    const hashedToken = hashToken(token);
-    const { rows: [user] } = await pool.query(`
-        WITH verified_token AS (
-            UPDATE user_tokens
-            SET consumed_at = NOW()
-            WHERE token_hash = $1
-            AND purpose_id = $2
-            AND expires_at > NOW()
-            RETURNING user_id)
-        UPDATE users
-        SET is_verified = TRUE
-        WHERE id IN (SELECT user_id FROM verified_token)
-        RETURNING *`,
-        [hashedToken, PURPOSES.EMAIL_VERIFICATION]);
+    const user = await verifyEmailByToken(hashToken(token), PURPOSES.EMAIL_VERIFICATION);
 
     if (!user){
         throw createError(400, "Invalid or expired token");
@@ -100,11 +163,10 @@ export const resendVerificationEmail = asyncHandler(async (req, res, next) => {
     const user = await validateUser(email, { mustExist: true, mustNotBeVerified: true});
 
     const verificationToken = await createAndInsertUserToken(
+        req,
         user.id, 
         PURPOSES.EMAIL_VERIFICATION, 
-        EMAIL_VERIFICATION_EXPIRATION_TIME, 
-        req, 
-        pool);
+        EMAIL_VERIFICATION_EXPIRATION_TIME);
 
     await sendVerificationEmail(email, verificationToken);
 
@@ -123,11 +185,10 @@ export const forgotPassword = asyncHandler(async (req, res, next) => {
     const user = await validateUser(email, { mustExist: true });
 
     const resetToken = await createAndInsertUserToken(
+        req,
         user.id, 
         PURPOSES.PASSWORD_RESET, 
-        RESET_PASSWORD_EXPIRATION_TIME, 
-        req, 
-        pool);
+        RESET_PASSWORD_EXPIRATION_TIME);
 
     await sendPasswordResetEmail(email, resetToken);
 
@@ -146,33 +207,14 @@ export const resetPassword = asyncHandler(async (req, res, next) => {
     const hashedPassword = await hashPassword(password);
 
     await runTransaction(async (client) => {
-        const { rows: [tokenRow] } = await client.query(`
-            SELECT * 
-            FROM user_tokens 
-            WHERE token_hash = $1
-            AND purpose_id = $2
-            AND expires_at > NOW()
-            AND consumed_at IS NULL`,
-            [hashedToken, PURPOSES.PASSWORD_RESET]);
-        
+        const tokenRow = await selectUserToken(hashedToken, PURPOSES.PASSWORD_RESET, client);
         if(!tokenRow) {
             throw createError(400, "Invalid or expired token");
         }
-
-        await client.query(`
-            UPDATE users
-            SET password_hash = $1
-            WHERE id = $2`,
-            [hashedPassword, tokenRow.user_id]);
-
-        await client.query(`
-            UPDATE user_tokens
-            SET consumed_at = NOW()
-            WHERE id = $1`,
-            [tokenRow.id]);
+        await updateUserPassword(hashedPassword, tokenRow.user_id, client);
+        await markTokenAsConsumed(tokenRow.id, client);
     });
     
-
     res.status(200).json({
         message: "Password reset successfully",
         error: false

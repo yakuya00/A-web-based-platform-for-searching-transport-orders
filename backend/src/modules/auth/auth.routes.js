@@ -1,7 +1,15 @@
 import express from "express";
 
 // Require to auth controllers.
-import { register, login, verifyEmail, resendVerificationEmail, forgotPassword, resetPassword } from "./auth.controller.js";
+import { 
+    register,
+    login,
+    logout,
+    refreshToken, 
+    verifyEmail, 
+    resendVerificationEmail, 
+    forgotPassword, 
+    resetPassword } from "./auth.controller.js";
 import { validateRequest } from "../../middlewares/validateRequest.js";
 import { registerSchema, loginSchema } from "./auth.validation.js";
 
@@ -14,6 +22,12 @@ router.post("/register",
 router.post("/login", 
     validateRequest(loginSchema),
     login);
+
+router.post("/logout", 
+    logout);
+
+router.get("/refresh-token", 
+    refreshToken);
 
 router.get("/verify-email",
     verifyEmail);

@@ -7,19 +7,28 @@ import pool from "../config/db.js"
 import { generateRandomToken, hashToken } from "./token.js";
 
 const SALT_ROUND = 10;
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_ACCESS_SECRET = process.env.JWT_SECRET;
+const JWT_REFRESH_SECRET = process.env.JWT_SECRET;
 
 export const comparePasswords = async (password, hashedPassword) => {
     return bcrypt.compare(password, hashedPassword);
 } 
 
-export const generateUserToken = (payload) => {
-    return jwt.sign(payload, JWT_SECRET, { expiresIn: "1h" });    
+export const generateAccessToken = (payload) => {
+    return jwt.sign(payload, JWT_ACCESS_SECRET, { expiresIn: "1h" });    
+};
+
+export const generateRefreshToken = (playload) => {
+    return jwt.sign(playload, JWT_REFRESH_SECRET, { expiresIn: "30d" });
 };
 
 export const hashPassword = async (password) => {
     return bcrypt.hash(password, SALT_ROUND); 
 };
+
+export const verifyToken = (token) => {
+    return jwt.verify(token, JWT_REFRESH_SECRET);
+}
 
 export const getUserByEmail = async (email) => {
     const result = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
@@ -60,20 +69,11 @@ export const validateUser = async (
     return returnUser ? user : undefined;
 };
 
-export const createAndInsertUserToken = async (userId, purpose, expiresInMs, req, client) => {
-    const verificationToken = generateRandomToken();
-    const hashedVerificationToken = hashToken(verificationToken);
-    const verificationTokenExpiresAt = new Date(Date.now() + expiresInMs);
-    const metadata = {
-        id: req.ip,
-        userAgent: req.headers["user-agent"]
-    };
-
-    await client.query(`
-        INSERT INTO user_tokens 
-        (user_id, purpose_id, token_hash, expires_at, metadata)
-        VALUES ($1, $2, $3, $4, $5)`,
-        [userId, purpose, hashedVerificationToken, verificationTokenExpiresAt, metadata]);
-
-    return verificationToken;
+export const setRefreshTokenCookie = (res, refreshToken, maxAge) => {
+    res.cookie("refreshToken", refreshToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "strict",
+        maxAge
+    });
 };

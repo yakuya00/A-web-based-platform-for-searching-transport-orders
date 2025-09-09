@@ -1,16 +1,24 @@
 import express from "express";
 
+import { checkAuthentication } from "../../middlewares/authMiddleware.js";
+import {
+    getMe,
+    userInfo,
+    userRolesList
+} from "./user.controller.js";
+
 const router = express.Router();
 
-router.get("/me", ...);
-router.post("/me", ...);
-router.get("/:id", ...);
-router.get("/users?company_id=");
+router.get("/me",
+    checkAuthentication,
+    getMe);
+    
+router.get("/roles",
+    userRolesList);
 
-- `GET    /api/users/me` — информация о себе
-- `PUT    /api/users/me` — обновить свой профиль
-- `GET    /api/users/:id` — инфо о пользователе
-- `GET    /api/users?company_id=` — список пользователей компании
+router.get("/:id",
+    checkAuthentication,
+    userInfo);
 
 
 

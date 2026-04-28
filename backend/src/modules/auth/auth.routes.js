@@ -1,44 +1,57 @@
 import express from "express";
 
 // Require to auth controllers.
-import { 
-    register,
-    login,
-    logout,
-    refreshToken, 
-    verifyEmail, 
-    resendVerificationEmail, 
-    forgotPassword, 
-    resetPassword } from "./auth.controller.js";
+import {
+  register,
+  registerFull,
+  login,
+  logout,
+  refreshToken,
+  verifyEmail,
+  resendVerificationEmail,
+  forgotPassword,
+  resetPassword,
+} from "./auth.controller.js";
 import { validateRequest } from "../../middlewares/validateRequest.js";
-import { registerSchema, loginSchema } from "./auth.validation.js";
+import {
+  registerSchema,
+  loginSchema,
+  fullRegisterSchema,
+} from "./auth.validation.js";
+import { checkAuthentication } from "../../middlewares/authMiddleware.js";
+
+import { checkRole } from "../../middlewares/roleMiddleware.js";
+
+import { USER_ROLES } from "../../constants/index.js";
 
 const router = express.Router();
 
-router.post("/register",
-    validateRequest(registerSchema),
-    register);
+router.post(
+  "/register",
+  validateRequest(registerSchema),
+  checkAuthentication,
+  checkRole([USER_ROLES.ADMIN, USER_ROLES.MANAGER]),
+  register,
+);
 
-router.post("/login", 
-    validateRequest(loginSchema),
-    login);
+router.post(
+  "/full-registration",
+  validateRequest(fullRegisterSchema),
+  registerFull,
+);
 
-router.post("/logout", 
-    logout);
+router.post("/login", validateRequest(loginSchema), login);
 
-router.get("/refresh-token", 
-    refreshToken);
+router.post("/logout", logout);
 
-router.get("/verify-email",
-    verifyEmail);
+router.get("/refresh-token", refreshToken);
 
-router.post("/resend-verification-email",
-    resendVerificationEmail);
+router.get("/verify-email", verifyEmail);
 
-router.post("/forgot-password",
-    forgotPassword);
+router.post("/resend-verification-email", resendVerificationEmail);
 
-router.post("/reset-password",
-    resetPassword); 
+router.post("/forgot-password", forgotPassword);
+
+router.post("/reset-password", resetPassword);
 
 export default router;

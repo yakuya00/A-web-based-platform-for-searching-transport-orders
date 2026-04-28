@@ -3,7 +3,8 @@ import createError from "http-errors";
 
 import { 
     getUserById,
-    getUserRoles } from "./user.repository.js";
+    getUserRoles,
+    getAllUsersByCompany} from "./user.repository.js";
 
 export const getMe = asyncHandler(async (req, res, next) => {
     if (!req.user?.id) {
@@ -30,6 +31,14 @@ export const userRolesList = asyncHandler(async (req, res, next) => {
         throw createError(404, "User roles not found");
     }
     res.status(200).json(userRoles);
+});
+
+export const getAllUsersInCompany = asyncHandler(async (req, res, next) => {
+    const users = await getAllUsersByCompany(req.user.company_id);
+    if(users.length === 0) {
+        throw createError(404, "Users not found");
+    }
+    res.status(200).json(users);
 });
 
 // export const changeEmail = asyncHandler(async (req, res, next) => {

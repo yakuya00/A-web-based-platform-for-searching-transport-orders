@@ -1,3 +1,45 @@
+-- Отключаем проверку внешних ключей временно
+SET session_replication_role = replica;
+
+-- Удаляем все таблицы, если они существуют
+DROP TABLE IF EXISTS order_confirmations CASCADE;
+DROP TABLE IF EXISTS order_qr_tokens CASCADE;
+DROP TABLE IF EXISTS confirmation_types CASCADE;
+DROP TABLE IF EXISTS order_status_history CASCADE;
+DROP TABLE IF EXISTS order_statuses CASCADE;
+DROP TABLE IF EXISTS orders CASCADE;
+DROP TABLE IF EXISTS order_info CASCADE;
+DROP TABLE IF EXISTS composition_trailers CASCADE;
+DROP TABLE IF EXISTS vehicle_compositions CASCADE;
+DROP TABLE IF EXISTS composition_statuses CASCADE;
+DROP TABLE IF EXISTS trailers CASCADE;
+DROP TABLE IF EXISTS trucks CASCADE;
+DROP TABLE IF EXISTS vehicles CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS user_roles CASCADE;
+DROP TABLE IF EXISTS token_purposes CASCADE;
+DROP TABLE IF EXISTS user_tokens CASCADE;
+DROP TABLE IF EXISTS company_addresses CASCADE;
+DROP TABLE IF EXISTS address_types CASCADE;
+DROP TABLE IF EXISTS company_identifiers CASCADE;
+DROP TABLE IF EXISTS companies CASCADE;
+DROP TABLE IF EXISTS identifier_types CASCADE;
+DROP TABLE IF EXISTS company_roles CASCADE;
+DROP TABLE IF EXISTS locates CASCADE;
+DROP TABLE IF EXISTS postcodes CASCADE;
+DROP TABLE IF EXISTS order_offers CASCADE;
+DROP TABLE IF EXISTS cities CASCADE;
+DROP TABLE IF EXISTS countries CASCADE;
+DROP TABLE IF EXISTS ratings CASCADE;
+DROP TABLE IF EXISTS chats CASCADE;
+DROP TABLE IF EXISTS chat_messages CASCADE;
+DROP TABLE IF EXISTS notification_types CASCADE;
+DROP TABLE IF EXISTS notifications CASCADE;
+
+-- Включаем проверку внешних ключей обратно
+SET session_replication_role = DEFAULT;
+
+
 CREATE EXTENSION IF NOT EXISTS postgis;
 
 
@@ -13,6 +55,9 @@ CREATE TABLE countries (
     iso_code CHAR(2) UNIQUE NOT NULL,  -- ISO kód země (např. "CZ", "US")
     name VARCHAR(100) NOT NULL -- Název země (např. "Czech Republic", "United States")
 );
+
+INSERT INTO countries (iso_code, name) 
+VALUES ('CZ', 'Czech Republic');
 
 --==============================================
 -- Table: cities
@@ -32,6 +77,19 @@ CREATE UNIQUE INDEX uq_cities_country_name_lower
     ON cities(country_id, LOWER(name)); -- English: Prevents duplicate city names within one country (case-insensitive)
                                        -- Czech: Zabraňuje duplicitním názvům měst v jedné zemi (bez rozlišení velikosti písmen)
 
+ALTER TABLE cities ADD CONSTRAINT cities_country_id_name_unique UNIQUE (country_id, name);
+
+DROP TABLE IF EXISTS postcodes CASCADE;
+
+CREATE TABLE postcodes (
+    id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    city_id INTEGER NOT NULL REFERENCES cities(id) ON DELETE CASCADE,
+    postcode VARCHAR(25) NOT NULL,
+    UNIQUE(city_id, postcode)
+);
+
+ALTER TABLE postcodes ALTER COLUMN postcode TYPE VARCHAR(50);
+
 
 --===================================================
 -- Table: locates
@@ -42,12 +100,19 @@ DROP TABLE IF EXISTS locates CASCADE;
 
 CREATE TABLE locates (
     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, -- ID lokace
-    city_id INT NOT NULL REFERENCES cities(id) ON DELETE RESTRICT, -- Odkaz na město
+    country_id INTEGER NOT NULL REFERENCES countries(id) ON DELETE CASCADE,
+    city_id INTEGER NOT NULL REFERENCES cities(id) ON DELETE CASCADE,
+    postcode_id INTEGER REFERENCES postcodes(id) ON DELETE CASCADE,
+    osm_id BIGINT NOT NULL, 
+    osm_type CHAR(1) NOT NULL,
+    --external_place_id BIGINT UNIQUE, -- Nominatim place_id
     street VARCHAR(150), -- Ulice (např. "Václavské náměstí")
-    zip VARCHAR(10), -- PSČ (např. "110 00")
-    geo_point GEOGRAPHY(Point, 4326) -- Geografický bod (souřadnice ve formátu WGS84)
+    house_number VARCHAR(20),
+    display_name TEXT NOT NULL,
+    geo_point GEOGRAPHY(Point, 4326) NOT NULL -- Geografický bod (souřadnice ve formátu WGS84)
 );
-
+ALTER TABLE locates ADD COLUMN city_id INTEGER REFERENCES cities(id) ON DELETE CASCADE;
+ALTER TABLE locates ADD CONSTRAINT unique_osm_object UNIQUE (osm_id, osm_type);
 CREATE INDEX idx_locates_geopoint ON locates USING GIST (geo_point);-- English: Spatial index for fast geolocation queries
                                                                      -- Czech: Prostorový index pro rychlé geolokační dotazy
 
@@ -62,6 +127,8 @@ DROP TABLE IF EXISTS company_roles CASCADE;
 CREATE TABLE company_roles (
     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, -- ID role
     name VARCHAR(50) NOT NULL UNIQUE, -- Název role (např. "carrier", "shipper")
+    label VARCHAR(100) NOT NULL,
+    icon VARCHAR(20),
     description TEXT -- Popis role (např. "Dopravce zajišťující přepravu zboží")
 );
 
@@ -80,6 +147,23 @@ CREATE TABLE identifier_types (
     description TEXT, -- Popis typu identifikátoru (např. "Identifikační číslo pro daň z přidané hodnoty")
     is_required BOOLEAN DEFAULT FALSE, -- Povinný identifikátor (např. DPH je povinné v EU)
     UNIQUE(country_id, name) -- Zajišťuje, že každý typ identifikátoru je unikátní v rámci země
+);
+
+INSERT INTO identifier_types (country_id, name, regex_pattern, description, is_required)
+VALUES 
+(
+    (SELECT id FROM countries WHERE iso_code = 'CZ'), 
+    'IČO', 
+    '^\d{8}$', 
+    'Identifikační číslo osoby (8 číslic)', 
+    TRUE
+),
+(
+    (SELECT id FROM countries WHERE iso_code = 'CZ'), 
+    'DIČ', 
+    '^CZ\d{8,10}$', 
+    'Daňové identifikační číslo (předpona CZ + 8-10 číslic)', 
+    FALSE
 );
 
 --===================================================
@@ -108,9 +192,9 @@ CREATE TABLE company_identifiers (
     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, -- ID identifikátoru
     company_id INT NOT NULL REFERENCES companies(id) ON DELETE CASCADE, -- Odkaz na firmu
     identifier_type_id INT NOT NULL REFERENCES identifier_types(id) ON DELETE RESTRICT, -- Odkaz na typ identifikátoru
-    id_value VARCHAR(50) NOT NULL, -- Hodnota identifikátoru (např. "CZ12345678" pro DPH)
+    identifier_value VARCHAR(50) NOT NULL, -- Hodnota identifikátoru (např. "CZ12345678" pro DPH)
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, -- Datum a čas vytvoření identifikátoru
-    UNIQUE (company_id, id_value), -- Zajišťuje, že hodnota identifikátoru je unikátní pro každou firmu
+    UNIQUE (company_id, identifier_value), -- Zajišťuje, že hodnota identifikátoru je unikátní pro každou firmu
     UNIQUE (company_id, identifier_type_id) -- Zajišťuje, že každý typ identifikátoru může být přiřazen pouze jednou firmě
 );
 
@@ -126,6 +210,18 @@ CREATE TABLE address_types (
     name VARCHAR(50) NOT NULL UNIQUE -- Název typu adresy (např. "headquarters", "branch", "warehouse")
 );
 
+INSERT INTO address_types (name) 
+VALUES 
+('Registered Office'), -- Юридический адрес (Official seat of the company)
+('Business Address'),  -- Фактический адрес (Where daily operations happen)
+('Correspondence'),    -- Почтовый адрес (Mailing address)
+('Billing'),           -- Адрес для счетов (Invoice address)
+('Warehouse'),         -- Склад
+('Residential'),       -- Адрес проживания (For individuals/freelancers)
+('Branch');            -- Филиал или отделение
+
+DELETE FROM users
+WHERE id = 5;
 --====================================================
 -- Table: company_addresses
 -- English: Stores addresses for companies with types
@@ -155,6 +251,22 @@ CREATE TABLE user_roles(
     description TEXT --Popis role (např. "Administrátor systému", "Řidič kamionu")
 );
 
+INSERT INTO user_roles (name, description) 
+VALUES 
+(
+    'Admin', 
+    'System administrator with full access to all settings, user management, and system logs.'
+),
+(
+    'Driver', 
+    'Authorized to access delivery schedules, update shipment statuses, and manage route information.'
+),
+(
+    'Manager', 
+    'Responsible for overseeing operations, managing drivers, and viewing performance reports.'
+);
+
+
 --====================================================
 -- Table: users
 -- English: Stores users with their roles and company affiliations
@@ -169,11 +281,65 @@ CREATE TABLE users (
     birthday DATE NOT NULL CHECK (birthday < CURRENT_DATE), -- Datum narození uživatele (nesmí být v budoucnosti)
     phone VARCHAR(15) UNIQUE NOT NULL CHECK (phone ~ '^\+?[0-9]{7,15}$'), -- Telefonní číslo (např. "+420123456789")
     email VARCHAR(100) UNIQUE NOT NULL CHECK (email ~ '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'), -- Emailová adresa
-    password_hash VARCHAR(255) NOT NULL, -- Hash hesla (např. bcrypt)
+    password_hash TEXT NOT NULL, -- Hash hesla (např. bcrypt)
+    is_verified BOOLEAN DEFAULT FALSE, -- 
     company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE RESTRICT, -- Odkaz na firmu, ke které uživatel patří
     role_id INTEGER NOT NULL REFERENCES user_roles(id) ON DELETE RESTRICT, -- Odkaz na roli uživatele
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP -- Datum a čas registrace uživatele v databázi
 );
+
+DROP TABLE IF EXISTS token_purposes CASCADE;
+CREATE TABLE token_purposes (
+    id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE, -- email, phone, password_reset
+    description TEXT 
+);
+
+INSERT INTO token_purposes (name, description) 
+VALUES 
+(
+    'Email Verification', 
+    'Used to verify the user''s email address during registration or after an update.'
+),
+(
+    'Password Reset', 
+    'Used for temporary links or codes to allow a user to change a forgotten password.'
+);
+
+DROP TABLE IF EXISTS user_tokens CASCADE;
+CREATE TABLE user_tokens (
+    id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    purpose_id INTEGER NOT NULL REFERENCES token_purposes(id),
+    token_hash TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL CHECK (expires_at > created_at),
+    consumed_at TIMESTAMP WITH TIME ZONE CHECK (consumed_at IS NULL OR consumed_at >= created_at),
+    metadata JSONB,
+    UNIQUE(user_id, purpose_id, token_hash)
+);
+
+CREATE INDEX idx_user_tokens_token_hash ON user_tokens(token_hash);
+CREATE INDEX idx_user_tokens_user_purpose ON user_tokens(user_id, purpose_id);
+
+CREATE INDEX idx_user_tokens_active
+ON user_tokens (user_id, purpose_id, created_at)
+WHERE consumed_at IS NULL AND expires_at > now();
+
+DROP TABLE IF EXISTS refresh_tokens CASCADE;
+
+CREATE TABLE refresh_tokens (
+    id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_hash TEXT NOT NULL,
+    metadata JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL CHECK (expires_at > created_at),
+    UNIQUE(user_id, token_hash)
+);
+
+CREATE INDEX idx_refresh_tokens_user ON refresh_tokens(user_id);
+CREATE INDEX idx_refresh_tokens_token_hash ON refresh_tokens(token_hash);
 
 --====================================================
 -- Table: vehicles
@@ -181,9 +347,12 @@ CREATE TABLE users (
 -- Czech: Uchovává vozidla s jejich specifikacemi
 --====================================================
 DROP TABLE IF EXISTS vehicles CASCADE;
+
+CREATE TYPE vehicle_type AS ENUM ('truck', 'trailer');
 CREATE TABLE vehicles (
     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, -- ID vozidla
     company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE, -- Odkaz na firmu, které vozidlo patří
+    vehicle_type vehicle_type NOT NULL ,
     reg_number VARCHAR(10) UNIQUE, -- Registrační značka vozidla (např. "1A2B3C4")
     brand VARCHAR(50), -- Značka vozidla (např. "Scania", "Mercedes")
     model VARCHAR(50), -- Model vozidla (např. "R 450", "Actros")
@@ -196,28 +365,28 @@ CREATE TABLE vehicles (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP -- Datum a čas přidání vozidla do databáze
 );
 
---====================================================
--- Table: trucks
--- English: Stores trucks with references to vehicles
--- Czech: Uchovává nákladní auta s odkazy na vozidla
---====================================================
-DROP TABLE IF EXISTS trucks CASCADE;
-CREATE TABLE trucks (
-    id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, -- ID nákladního auta
-    vehicle_id INTEGER NOT NULL UNIQUE REFERENCES vehicles(id) ON DELETE CASCADE -- Odkaz na vozidlo, které je nákladním autem
-);
+-- --====================================================
+-- -- Table: trucks
+-- -- English: Stores trucks with references to vehicles
+-- -- Czech: Uchovává nákladní auta s odkazy na vozidla
+-- --====================================================
+-- DROP TABLE IF EXISTS trucks CASCADE;
+-- CREATE TABLE trucks (
+--     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, -- ID nákladního auta
+--     vehicle_id INTEGER NOT NULL UNIQUE REFERENCES vehicles(id) ON DELETE CASCADE -- Odkaz na vozidlo, které je nákladním autem
+-- );
 
---====================================================
--- Table: trailers
--- English: Stores trailers with references to vehicles
--- Czech: Uchovává přívěsy s odkazy na vozidla
---====================================================
-DROP TABLE IF EXISTS trailers CASCADE;
+-- --====================================================
+-- -- Table: trailers
+-- -- English: Stores trailers with references to vehicles
+-- -- Czech: Uchovává přívěsy s odkazy na vozidla
+-- --====================================================
+-- DROP TABLE IF EXISTS trailers CASCADE;
 
-CREATE TABLE trailers (
-    id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, -- ID přívěsu
-    vehicle_id INTEGER NOT NULL UNIQUE REFERENCES vehicles(id) ON DELETE CASCADE -- Odkaz na vozidlo, které je přívěsem
-);
+-- CREATE TABLE trailers (
+--     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, -- ID přívěsu
+--     vehicle_id INTEGER NOT NULL UNIQUE REFERENCES vehicles(id) ON DELETE CASCADE -- Odkaz na vozidlo, které je přívěsem
+-- );
 
 --====================================================
 -- Table: composition_statuses
@@ -232,6 +401,12 @@ CREATE TABLE composition_statuses (
     description TEXT -- Popis stavu (např. "Aktivní složení vozidel", "Údržba vozidel")
 );
 
+-- Insert statuses
+INSERT INTO composition_statuses (name, description) VALUES
+('active', 'Active vehicle composition'),
+('inactive', 'Inactive vehicle composition'),
+('maintenance', 'Vehicle composition under maintenance');
+
 --====================================================
 -- Table: vehicle_compositions
 -- English: Stores compositions of vehicles (trucks and trailers)
@@ -242,11 +417,30 @@ CREATE TABLE vehicle_compositions (
     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, -- ID složení vozidel
     name VARCHAR(150), -- Název složení (např. "Složení 1", "Složení pro objednávku 123")
     description TEXT, -- Popis složení (např. "Složení pro přepravu zboží z Prahy do Brna")
-    truck_id INTEGER NOT NULL REFERENCES trucks(id) ON DELETE CASCADE, -- Odkaz na nákladní auto, které je součástí složení
+    company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    truck_id INTEGER NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE, -- Odkaz na nákladní auto, které je součástí složení
     driver_id INTEGER REFERENCES users(id) ON DELETE SET NULL, -- Odkaz na řidiče, který řídí toto složení (může být NULL, pokud není přiřazen)
     status_id INTEGER NOT NULL REFERENCES composition_statuses(id) ON DELETE RESTRICT, -- Odkaz na stav složení vozidel
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP -- Datum a čas vytvoření složení vozidel
 );
+
+-- Сначала создаём функцию-триггер
+CREATE OR REPLACE FUNCTION set_default_inactive_status()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Если статус не указан, проставляем ID для inactive
+    IF NEW.status_id IS NULL THEN
+        SELECT id INTO NEW.status_id FROM composition_statuses WHERE name = 'inactive' LIMIT 1;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Теперь создаём триггер, который будет срабатывать перед вставкой
+CREATE TRIGGER trg_set_inactive_status
+BEFORE INSERT ON vehicle_compositions
+FOR EACH ROW
+EXECUTE FUNCTION set_default_inactive_status();
 
 --====================================================
 -- Table: composition_trailers
@@ -259,21 +453,65 @@ CREATE TABLE composition_trailers (
     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, -- ID záznamu o přívěsu ve složení
     position_order INTEGER NOT NULL CHECK (position_order > 0), -- Pořadí přívěsu ve složení (např. 1 pro první přívěs, 2 pro druhý)
     vehicle_composition_id INTEGER NOT NULL REFERENCES vehicle_compositions(id) ON DELETE CASCADE, -- Odkaz na složení vozidel, ke kterému přívěs patří
-    trailer_id INTEGER NOT NULL UNIQUE REFERENCES trailers(id) ON DELETE CASCADE, -- Odkaz na přívěs, který je součástí složení
+    trailer_id INTEGER NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE, -- Odkaz na přívěs, který je součástí složení
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, -- Datum a čas přidání přívěsu do složení
     CHECK (position_order > 0), -- Zajišťuje, že pořadí přívěsu je kladné
     UNIQUE(vehicle_composition_id, position_order) -- Zajišťuje, že každé složení může mít pouze jeden přívěs na daném pořadí
 );
 
-
 --====================================================
--- Table: order_info
--- English: Stores detailed information about orders
--- Czech: Uchovává podrobné informace o objednávkách
---====================================================
-DROP TABLE IF EXISTS order_info CASCADE;
+-- Table: orders
+-- English: Stores orders with references to order_info and vehicle compositions
+-- Czech: Uchovává objednávky s odkazy na informace o objednávce a složení vozidel
+--====================================================  
+-- DROP TABLE IF EXISTS orders CASCADE;
 
-CREATE TABLE order_info (
+-- CREATE TABLE orders (
+--     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, -- ID objednávky
+--     vehicle_composition_id INTEGER REFERENCES vehicle_compositions(id) ON DELETE SET NULL, -- Odkaz na složení vozidel, které je přiřazeno k objednávce (může být NULL, pokud není přiřazeno)
+--     created_by INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT, -- Odkaz na uživatele, který objednávku vytvořil
+-- );
+
+
+-- --====================================================
+-- -- Table: order_info
+-- -- English: Stores detailed information about orders
+-- -- Czech: Uchovává podrobné informace o objednávkách
+-- --====================================================
+-- DROP TABLE IF EXISTS order_info CASCADE;
+
+-- CREATE TABLE order_info (
+--     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, -- ID objednávky
+--     order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+--     company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE RESTRICT, -- Odkaz na firmu, která objednávku vytvořila
+--     loading_date DATE, -- Datum nakládky (může být NULL, pokud není specifikováno)
+--     loading_address_id INTEGER NOT NULL REFERENCES locates(id) ON DELETE RESTRICT, -- Odkaz na lokaci nakládky (adresu)
+--     unloading_date DATE, -- Datum vykládky (může být NULL, pokud není specifikováno)
+--     unloading_address_id INTEGER NOT NULL REFERENCES locates(id) ON DELETE RESTRICT, -- Odkaz na lokaci vykládky (adresu)
+--     length DECIMAL(6,2) CHECK (length > 0), -- Délka nákladu v metrech (např. 5.00)
+--     height DECIMAL(6,2) CHECK (height > 0), -- Výška nákladu v metrech (např. 2.50)
+--     weight DECIMAL(7,2) CHECK (weight > 0), -- Hmotnost nákladu v tunách (např. 10.00)
+--     volume DECIMAL(7,2) CHECK (volume > 0), -- Objem nákladu v kubických metrech (např. 20.00)
+--     cargo_description TEXT, -- Popis nákladu (např. "Elektronika", "Potraviny")
+--     cargo_type VARCHAR(50), -- Typ nákladu (např. "paletové zboží", "sypké zboží")
+--     cargo_condition VARCHAR(50), -- Stav nákladu (např. "křehké", "nebezpečné")
+--     extra_info TEXT, -- Další informace o nákladu (např. "Požadavek na chlazení", "Speciální manipulace")
+--     price NUMERIC(12,2), -- Cena objednávky (např. 1500.00)
+--     currency VARCHAR(10), -- Měna ceny (např. "CZK", "EUR")
+--     payment_term_days INTEGER, -- Platební podmínky v dnech (např. 30)
+--     payment_method VARCHAR(50), -- Způsob platby (např. "bankovní převod", "hotově")
+--     vehicle_requirements VARCHAR(50), -- Požadavky na vozidlo (např. "chlazené", "plachtové")
+--     external_comment TEXT, -- Externí komentář k objednávce (např. "Zákazník požaduje rychlé doručení")
+--     internal_comment TEXT, -- Interní komentář k objednávce (např. "Zkontrolovat dostupnost vozidel")
+--     contact_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT, -- Odkaz na uživatele, který je kontaktní osobou pro objednávku
+--     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, -- Datum a čas vytvoření objednávky
+--     CHECK (unloading_date IS NULL OR loading_date IS NULL OR unloading_date >= loading_date) -- Zajišťuje, že datum vykládky není před datem nakládky
+-- );
+
+
+DROP TABLE IF EXISTS orders CASCADE;
+
+CREATE TABLE orders (
     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, -- ID objednávky
     company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE RESTRICT, -- Odkaz na firmu, která objednávku vytvořila
     loading_date DATE, -- Datum nakládky (může být NULL, pokud není specifikováno)
@@ -296,24 +534,11 @@ CREATE TABLE order_info (
     external_comment TEXT, -- Externí komentář k objednávce (např. "Zákazník požaduje rychlé doručení")
     internal_comment TEXT, -- Interní komentář k objednávce (např. "Zkontrolovat dostupnost vozidel")
     contact_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT, -- Odkaz na uživatele, který je kontaktní osobou pro objednávku
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, -- Datum a čas vytvoření objednávky
+    created_by INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    vehicle_composition_id INTEGER REFERENCES vehicle_compositions(id) ON DELETE SET NULL,
     CHECK (unloading_date IS NULL OR loading_date IS NULL OR unloading_date >= loading_date) -- Zajišťuje, že datum vykládky není před datem nakládky
 );
-
---====================================================
--- Table: orders
--- English: Stores orders with references to order_info and vehicle compositions
--- Czech: Uchovává objednávky s odkazy na informace o objednávce a složení vozidel
---====================================================  
-DROP TABLE IF EXISTS orders CASCADE;
-
-CREATE TABLE orders (
-    id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, -- ID objednávky
-    order_info_id INTEGER NOT NULL REFERENCES order_info(id) ON DELETE CASCADE, -- Odkaz na informace o objednávce
-    vehicle_composition_id INTEGER REFERENCES vehicle_compositions(id) ON DELETE SET NULL, -- Odkaz na složení vozidel, které je přiřazeno k objednávce (může být NULL, pokud není přiřazeno)
-    created_by INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT, -- Odkaz na uživatele, který objednávku vytvořil
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP -- Datum a čas vytvoření objednávky
-);
-
 
 --====================================================
 -- Table: order_statuses
@@ -328,6 +553,40 @@ CREATE TABLE order_statuses (
     description TEXT -- Popis stavu (např. "Objednávka byla vytvořena", "Objednávka je přiřazena řidiči", "Objednávka byla dokončena")
 );
 
+INSERT INTO order_statuses (name, description) 
+VALUES 
+(
+    'created', 
+    'Aktivní - The order has been created and is waiting for action.'
+),
+(
+    'assigned', 
+    'Přiděleno - The order has been assigned to a specific driver or processor.'
+),
+(
+    'in_progress', 
+    'V řešení - The order is currently being processed or is in transit.'
+),
+(
+    'completed', 
+    'Dokončeno - The order has been successfully finished.'
+),
+(
+    'cancelled', 
+    'Stornováno - The order has been terminated or voided.'
+);
+
+DROP TABLE IF EXISTS order_offers CASCADE;
+
+CREATE TABLE order_offers (
+    id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+    transport_company_id INTEGER NOT NULL REFERENCES companies(id), -- Кто предлагает
+    proposed_price DECIMAL(10, 2) NOT NULL, -- За сколько готовы везти
+    status VARCHAR(20) DEFAULT 'pending', -- 'pending', 'accepted', 'rejected'
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(order_id, transport_company_id)
+);
 
 --====================================================
 -- Table: order_status_history
@@ -339,12 +598,11 @@ DROP TABLE IF EXISTS order_status_history CASCADE;
 CREATE TABLE order_status_history(
     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, -- ID záznamu historie stavu
     order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE, -- Odkaz na objednávku, ke které se vztahuje tento záznam
-    previous_status_id INTEGER REFERENCES order_statuses(id) ON DELETE RESTRICT, -- Odkaz na předchozí stav objednávky (může být NULL, pokud je to první záznam)
-    new_status_id INTEGER NOT NULL REFERENCES order_statuses(id) ON DELETE RESTRICT, -- Odkaz na nový stav objednávky 
+    -- previous_status_id INTEGER REFERENCES order_statuses(id) ON DELETE RESTRICT, -- Odkaz na předchozí stav objednávky (může být NULL, pokud je to první záznam)
+    status_id INTEGER NOT NULL REFERENCES order_statuses(id) ON DELETE RESTRICT, -- Odkaz na nový stav objednávky 
     changed_by INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT, -- Odkaz na uživatele, který změnil stav objednávky
     changed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, -- Datum a čas změny stavu objednávky
-    UNIQUE (order_id, changed_at), -- Zajišťuje, že pro každou objednávku existuje pouze jeden záznam pro daný čas změny
-    CHECK (previous_status_id IS DISTINCT FROM new_status_id) -- Zajišťuje, že stav se nemůže změnit na stejný stav
+    UNIQUE (order_id, changed_at) -- Zajišťuje, že pro každou objednávku existuje pouze jeden záznam pro daný čas změny
 );
 
 
@@ -393,6 +651,9 @@ CREATE TABLE order_confirmations (
     confirmed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP -- Datum a čas potvrzení objednávky
 );
 
+CREATE INDEX idx_order_status_history_order_id ON order_status_history(order_id);
+CREATE INDEX idx_order_status_history_changed_at ON order_status_history(changed_at DESC);
+
 --====================================================
 -- Table: ratings
 -- English: Stores ratings given by users to companies based on orders
@@ -424,6 +685,7 @@ CREATE TABLE chats (
     order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE, -- Odkaz na objednávku, ke které se chat vztahuje
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP -- Datum a čas vytvoření chatové relace
 );
+ALTER TABLE chats ADD COLUMN carrier_id INT;
 
 --====================================================
 -- Table: chat_messages

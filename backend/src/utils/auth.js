@@ -15,7 +15,7 @@ export const comparePasswords = async (password, hashedPassword) => {
 } 
 
 export const generateAccessToken = (payload) => {
-    return jwt.sign(payload, JWT_ACCESS_SECRET, { expiresIn: "1h" });    
+    return jwt.sign(payload, JWT_ACCESS_SECRET, { expiresIn: "30d" });    
 };
 
 export const generateRefreshToken = (playload) => {
@@ -49,6 +49,7 @@ export const validateUser = async (
     }
 
     const user = await getUserByEmail(email);
+    console.log(user);
 
     if (mustExist && !user) {
         throw createError(404, "User not found");

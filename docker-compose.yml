@@ -1,0 +1,48 @@
+services:
+  # --- Бэкенд ---
+  backend:
+    build: ./backend
+    container_name: my-app-backend
+    ports:
+      - "5000:5000"  # Доступ с хоста: localhost:5000
+    volumes:
+      - ./backend:/app           # Синхронизация кода (Hot Reload)
+      - /app/node_modules        # Изоляция зависимостей контейнера (Важно!)
+    environment:
+      - DB_HOST=host.docker.internal              # Имя сервиса базы данных
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=03Yarik09
+      - DB_NAME=web-platform
+    depends_on:
+      - db
+
+  # --- Фронтенд ---
+  frontend:
+    build: ./frontend-web
+    container_name: my-app-frontend
+    ports:
+      - "5173:5173"  # Доступ в браузере: localhost:5173
+    volumes:
+      - ./frontend-web:/app          # Синхронизация кода
+      - /app/node_modules        # Изоляция зависимостей
+    environment:
+      - VITE_API_URL=http://localhost:5000 # Браузер ходит на бэкенд через localhost
+    stdin_open: true # Исправляет проблему с выходом React-скриптов
+    tty: true
+
+  # --- База данных (опционально) ---
+  db:
+    image: postgres:15-alpine
+    container_name: my-app-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: web-platform
+    ports:
+      - "5432:5432" # Чтобы можно было подключиться через DBeaver/pgAdmin
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+@theme {
+    /* Шрифт */
+    --font-sans: "Inter", sans-serif;
+
+  /* --- ЦВЕТОВАЯ ПАЛИТРА --- */
+
+  /* Primary: Оранжевый (Акцент, кнопки) */
+    --color-primary: #ea580c;      /* orange-600 */
+    --color-primary-hover: #c2410c; /* orange-700 (при наведении) */
+    --color-primary-light: #ffedd5; /* orange-100 (фон для иконок) */
+
+  /* Secondary: Темный шифер (Меню, заголовки) */
+    --color-secondary: #1e293b;    /* slate-800 */
+    --color-secondary-light: #475569; /* slate-600 (текст поменьше) */
+
+  /* Backgrounds: Фоны */
+    --color-bg-main: #f1f5f9;      /* slate-100 (фон всей страницы) */
+    --color-surface: #ffffff;      /* белый (фон карточек) */
+    --color-border: #cbd5e1;       /* slate-300 (границы таблиц) */
+
+  /* Statuses: Статусы заказов */
+    --color-success: #16a34a;      /* green-600 (Выполнен) */
+    --color-warning: #ca8a04;      /* yellow-600 (В пути) */
+    --color-danger: #dc2626;       /* red-600 (Отменен) */
+}
+
+body {
+  background-color: var(--color-bg-main);
+  color: var(--color-secondary);
+}

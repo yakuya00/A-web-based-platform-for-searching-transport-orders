@@ -7,60 +7,65 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-
-// 🔥 Объединил все иконки в один аккуратный импорт
 import {
-  MapPin,
   Package,
   Wallet,
   Clock,
   CheckCircle2,
   XCircle,
   ArrowRight,
-  Eye,
   Truck,
   Flag,
   Star,
+  Ban,
+  Search,
 } from 'lucide-react';
 
-// Это рендер статуса самой СТАВКИ (Тендера)
 const renderStatusBadge = (status) => {
+  const baseClass =
+    'flex items-center gap-1.5 px-2.5 py-0.5 border-transparent font-semibold';
+
   switch (status) {
     case 'pending':
       return (
         <Badge
-          variant="outline"
-          className="bg-yellow-50 text-yellow-700 border-yellow-200"
+          className={`${baseClass} bg-amber-100 text-amber-800 hover:bg-amber-200`}
         >
-          <Clock className="w-3 h-3 mr-1" /> Čeká na vyjádření
+          <Clock className="w-3.5 h-3.5" /> Čeká na vyjádření
         </Badge>
       );
     case 'accepted':
       return (
-        <Badge className="bg-green-500 hover:bg-green-600">
-          <CheckCircle2 className="w-3 h-3 mr-1" /> Přijato
+        <Badge
+          className={`${baseClass} bg-green-100 text-green-800 hover:bg-green-200`}
+        >
+          <CheckCircle2 className="w-3.5 h-3.5" /> Přijato
         </Badge>
       );
     case 'rejected':
       return (
-        <Badge variant="destructive">
-          <XCircle className="w-3 h-3 mr-1" /> Zamítnuto
+        <Badge
+          className={`${baseClass} bg-red-100 text-red-800 hover:bg-red-200`}
+        >
+          <XCircle className="w-3.5 h-3.5" /> Zamítnuto
         </Badge>
       );
     case 'cancelled':
       return (
         <Badge
-          variant="secondary"
-          className="bg-gray-100 text-gray-500 border-gray-200"
+          className={`${baseClass} bg-gray-100 text-gray-700 hover:bg-gray-200`}
         >
-          <XCircle className="w-3 h-3 mr-1" /> Zakázka stornována
+          <Ban className="w-3.5 h-3.5" /> Stornováno
         </Badge>
       );
     default:
-      return <Badge variant="secondary">Neznámý</Badge>;
+      return (
+        <Badge className={`${baseClass} bg-gray-100 text-gray-500`}>
+          Neznámý
+        </Badge>
+      );
   }
 };
 
@@ -72,12 +77,39 @@ const formatDate = (dateString) => {
   });
 };
 
+/**
+ * Tabulka odeslaných nabídek (Dopravce).
+ * * Tento komponent spravuje životní cyklus nabídek, které dopravce odeslal na burzu:
+ * 1. Fáze 'pending': Nabídka je odeslána a čeká se na reakci odesílatele.
+ * 2. Fáze 'accepted' (bez vozidla): Odesílatel přijal cenu, dispečer musí přiřadit auto.
+ * 3. Fáze 'accepted' (přiřazeno): Zakázka je připravena k realizaci, čeká se na nakládku.
+ * 4. Fáze 'in_progress': Řidič naskenoval QR kód nakládky a je na cestě.
+ * 5. Fáze 'completed': Přeprava je u konce, možnost ohodnotit odesílatele.
+ * @param {Object} props
+ * @param {Array} props.offers - Pole objektů nabídek načtených z API.
+ * @param {Function} props.handleOpenAssignDialog - Otevře dialog pro výběr vozidla a řidiče.
+ * @param {Function} [props.handleOpenRating] - Otevře dialog pro hodnocení protistrany (odesílatele).
+ */
 const MyOffersTable = ({
   offers,
   handleOpenAssignDialog,
   handleOpenRating = null,
 }) => {
-  console.log(offers);
+  if (!offers || offers.length === 0) {
+    return (
+      <div className="p-12 text-center border-2 border-dashed rounded-lg text-gray-500">
+        <Search className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+        <h3 className="text-lg font-medium text-gray-900 mb-1">
+          Žádné odeslané nabídky
+        </h3>
+        <p>
+          Zatím nemáte žádné odeslané nabídky. Běžte na burzu a ulovte nějakou
+          zakázku!
+        </p>
+      </div>
+    );
+  }
+
   return (
     <Table>
       <TableHeader>
@@ -95,7 +127,6 @@ const MyOffersTable = ({
             key={offer.id}
             className="hover:bg-gray-50/50 transition-colors"
           >
-            {/* ТРАССА */}
             <TableCell>
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-2 font-semibold text-gray-900">
@@ -118,8 +149,6 @@ const MyOffersTable = ({
                 </span>
               </div>
             </TableCell>
-
-            {/* ГРУЗ */}
             <TableCell>
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <Package className="w-4 h-4 text-gray-400" />
@@ -129,7 +158,6 @@ const MyOffersTable = ({
               </div>
             </TableCell>
 
-            {/* ЦЕНА */}
             <TableCell>
               <div className="flex items-center gap-1.5 font-bold text-gray-900">
                 <Wallet className="w-4 h-4 text-green-600" />
@@ -137,95 +165,71 @@ const MyOffersTable = ({
               </div>
             </TableCell>
 
-            {/* СТАТУС СТАВКИ */}
             <TableCell>{renderStatusBadge(offer.offer_status)}</TableCell>
 
-            {/* КНОПКИ И СТАТУС ЗАКАЗА */}
-            <TableCell className="text-right flex items-center justify-end gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-              >
-                <Eye className="w-4 h-4 mr-2" />
-                Detail
-              </Button>
-
-              {/* 🔥 ЛОГИКА ОТОБРАЖЕНИЯ СТАТУСА МАШИНЫ */}
-              {offer.offer_status === 'accepted' &&
-                (offer.vehicle_composition_id ? (
-                  <div className="flex items-center">
-                    {/* Если только назначили (или если статус с бэка пустой для подстраховки) */}
-                    {(!offer.order_status_name ||
-                      offer.order_status_name === 'assign') && (
-                      <Badge
-                        variant="outline"
-                        className="bg-green-50 text-green-700 border-green-200"
-                      >
-                        <CheckCircle2 className="w-3 h-3 mr-1" /> Vozidlo
-                        přiřazeno
-                      </Badge>
-                    )}
-
-                    {/* Водитель отсканировал погрузку */}
-                    {offer.order_status_name === 'in_progress' && (
-                      <Badge className="bg-blue-500 hover:bg-blue-600 text-white shadow-sm border-transparent">
-                        <Truck className="w-3 h-3 mr-1" /> Na cestě
-                      </Badge>
-                    )}
-
-                    {/* Водитель отсканировал выгрузку */}
-                    {offer.order_status_name === 'completed' && (
-                      <div className="flex items-center gap-2">
+            <TableCell className="text-right">
+              <div className="flex items-center justify-end gap-2">
+                {offer.offer_status === 'accepted' &&
+                  (offer.vehicle_composition_id ? (
+                    <div className="flex items-center">
+                      {(!offer.order_status_name ||
+                        offer.order_status_name === 'assign') && (
                         <Badge
                           variant="outline"
-                          className="bg-gray-100 text-gray-600 border-gray-300"
+                          className="bg-green-50 text-green-700 border-green-200"
                         >
-                          <Flag className="w-3 h-3 mr-1" /> Dokončeno
+                          <CheckCircle2 className="w-3 h-3 mr-1" /> Vozidlo
+                          přiřazeno
                         </Badge>
+                      )}
 
-                        {/* 🔥 ДОБАВЛЯЕМ КНОПКУ РЕЙТИНГА ДЛЯ ПЕРЕВОЗЧИКА */}
-                        {handleOpenRating && (
-                          <Button
+                      {offer.order_status_name === 'in_progress' && (
+                        <Badge className="bg-blue-500 hover:bg-blue-600 text-white shadow-sm border-transparent">
+                          <Truck className="w-3 h-3 mr-1" /> Na cestě
+                        </Badge>
+                      )}
+
+                      {offer.order_status_name === 'completed' && (
+                        <div className="flex items-center gap-2">
+                          <Badge
                             variant="outline"
-                            size="sm"
-                            // Перевозчик оценивает Заказчика (offer.company_id)
-                            onClick={() =>
-                              handleOpenRating(offer.order_id, offer.company_id)
-                            }
-                            className="h-7 px-2 text-xs bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-100"
+                            className="bg-gray-100 text-gray-600 border-gray-300"
                           >
-                            <Star className="w-3 h-3 mr-1" /> Ohodnotit
-                          </Button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  // Если машина ЕЩЕ НЕ назначена
-                  <Button
-                    size="sm"
-                    className="bg-green-600 hover:bg-green-700"
-                    onClick={() => handleOpenAssignDialog(offer.order_id)}
-                  >
-                    Přiřadit vozidlo
-                  </Button>
-                ))}
+                            <Flag className="w-3 h-3 mr-1" /> Dokončeno
+                          </Badge>
+
+                          {handleOpenRating && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Ohodnotit odesilatele"
+                              onClick={() =>
+                                handleOpenRating(
+                                  offer.order_id,
+                                  offer.company_id
+                                )
+                              }
+                              className="h-8 w-8 text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50"
+                            >
+                              <Star className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <Button
+                      size="sm"
+                      className="bg-green-600 hover:bg-green-700"
+                      onClick={() => handleOpenAssignDialog(offer.order_id)}
+                    >
+                      Přiřadit vozidlo
+                    </Button>
+                  ))}
+              </div>
             </TableCell>
           </TableRow>
         ))}
-
-        {offers.length === 0 && (
-          <TableRow>
-            <TableCell
-              colSpan={5}
-              className="h-32 text-center text-muted-foreground"
-            >
-              Zatím nemáte žádné odeslané nabídky. Běžte na burzu a ulovte
-              nějakou zakázku!
-            </TableCell>
-          </TableRow>
-        )}
       </TableBody>
     </Table>
   );

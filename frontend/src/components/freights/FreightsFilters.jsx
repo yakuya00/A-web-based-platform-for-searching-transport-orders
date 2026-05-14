@@ -1,22 +1,16 @@
 import React from 'react';
-
 import InputAutoComplete from '@/components/ui/InputAutoComplete';
+import { Search, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Field,
-  FieldGroup,
-  FieldLabel,
-  FieldDescription,
-} from '@/components/ui/field';
+import { Field, FieldLabel } from '@/components/ui/field';
 
 const typeOptions = [
   { id: 'all', name: 'Všechny typy' },
@@ -25,6 +19,19 @@ const typeOptions = [
   { id: 'dodavka', name: 'Dodávka (do 3.5t)' },
 ];
 
+/**
+ * Filtrační panel pro vyhledávání přepravních zakázek (Freights).
+ * * Tento komponent slouží jako horizontální vyhledávací lišta, která kombinuje:
+ * 1. Geografické vyhledávání pomocí našeptávače (Autocomplete).
+ * 2. Kategorizaci podle typu nástavby (plachta, frigo, atd.).
+ * 3. Numerické rozmezí pro tonáž nákladu.
+ * @param {Object} props
+ * @param {Object} props.filters - Objekt obsahující stavy a handlery pro všechny filtry.
+ * @param {boolean} props.isLoading - Indikátor probíhajícího API požadavku (vypíná tlačítko).
+ * @param {Function} props.handleSearch - Funkce spouštěná při kliknutí na tlačítko "Hledat".
+ * @todo (Refactor) Vyčlenit 'typeOptions' do globálních konstant (constants/freights.js).
+ * @returns {JSX.Element}
+ */
 const FreightsFilters = ({ filters, isLoading, handleSearch }) => {
   const {
     fromLocation,
@@ -50,7 +57,6 @@ const FreightsFilters = ({ filters, isLoading, handleSearch }) => {
         onItemSelect={fromLocation.selectItem}
       />
 
-      {/* Иконка стрелочки между городами */}
       <div className="hidden md:flex pb-3 text-gray-400">
         <svg
           className="size-5"
@@ -94,7 +100,6 @@ const FreightsFilters = ({ filters, isLoading, handleSearch }) => {
         </Select>
       </Field>
 
-      {/* 🔥 Поле с весом, обернутое в Field */}
       <Field className="shrink-0 w-40">
         <FieldLabel>Váha (t)</FieldLabel>
         <div className="flex items-center gap-2">
@@ -119,7 +124,17 @@ const FreightsFilters = ({ filters, isLoading, handleSearch }) => {
       </Field>
 
       <Button onClick={handleSearch} disabled={isLoading}>
-        {isLoading ? '⏳ Hledám...' : '🔍 Hledat'}
+        {isLoading ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Hledám...
+          </>
+        ) : (
+          <>
+            <Search className="h-4 w-4" />
+            Hledat
+          </>
+        )}
       </Button>
     </div>
   );

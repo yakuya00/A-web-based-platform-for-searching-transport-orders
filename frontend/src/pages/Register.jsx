@@ -4,14 +4,16 @@ import { RoleSelection } from '@/components/registration/RoleSelection';
 import { CompanyForm } from '@/components/registration/CompanyForm';
 import { ManagerForm } from '@/components/registration/ManagerForm';
 
+/**
+ * Komponenta Register - Hlavní orchestrátor registrace.
+ */
 export default function Register() {
   const [step, setStep] = useState(1);
   const { data, actions } = useRegister();
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-background p-4">
+    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 p-4">
       <div className="bg-surface p-8 rounded-xl w-full max-w-md shadow-lg border border-gray-100">
-        {/* Прогресс бар */}
         <div className="mb-6 flex gap-2">
           <div
             className={`h-1 flex-1 rounded-full ${step >= 1 ? 'bg-blue-600' : 'bg-gray-200'}`}
@@ -24,7 +26,7 @@ export default function Register() {
           ></div>
         </div>
 
-        {/* Логика переключения шагов */}
+        {/* --- KROK 1: VÝBĚR ROLE --- */}
         {step === 1 && (
           <RoleSelection
             onSelect={(companyRoleId) => {
@@ -34,6 +36,7 @@ export default function Register() {
           />
         )}
 
+        {/* --- KROK 2: ÚDAJE O FIRMĚ --- */}
         {step === 2 && (
           <CompanyForm
             data={data.formData}
@@ -43,6 +46,7 @@ export default function Register() {
           />
         )}
 
+        {/* --- KROK 2: ÚDAJE O FIRMĚ --- */}
         {step === 3 && (
           <ManagerForm
             data={data.formData}

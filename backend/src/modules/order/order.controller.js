@@ -1,8 +1,13 @@
+/**
+ * Controller pro komplexní správu životního cyklu objednávek.
+ * Obsahuje logiku od vytvoření zakázky přes aukční systém (nabídky)
+ * až po logistické operace řidiče (QR skenování).
+ * @module modules/order/order.controller
+ */
+
 import asyncHandler from "express-async-handler";
 import createError from "http-errors";
-
 import { runTransaction, insertLocation } from "../../utils/dbUtils.js";
-
 import {
   addOrderInfo,
   insertOrder,
@@ -29,14 +34,18 @@ import {
   freeUpVehicleComposition,
   getLatestOrderStatus,
 } from "./order.repository.js";
-
 import { ORDER_STATUSES } from "../../constants/index.js";
+import { sendRecipientQRCode } from "../../utils/email.js";
 
+/**
+ * Vytvoří novou objednávku přepravy včetně validace adres.
+ * @param {import('express').Request} req - Body obsahuje detaily nákladu a adresy.
+ * @throws {HttpError} 400/500 při chybě v transakci nebo validaci adres.
+ */
 export const addOrder = asyncHandler(async (req, res, next) => {
   const orderInfo = req.body;
   const companyId = req.user.company_id;
   const userId = req.user.id;
-  console.log(orderInfo.currency);
   await runTransaction(async (client) => {
     const loadingAddressId = await insertLocation(orderInfo.loading_address);
     const unloadingAddressId = await insertLocation(
@@ -66,6 +75,11 @@ export const addOrder = asyncHandler(async (req, res, next) => {
   });
 });
 
+/**
+ * Získá kompletní detailní informace o konkrétní objednávce.
+ * @param {import('express').Request} req - Obsahuje ID zakázky v params.
+ * @throws {HttpError} 404 - Pokud zakázka neexistuje.
+ */
 export const getOrderInformation = asyncHandler(async (req, res, next) => {
   const orderId = req.params.id;
   const userId = req.user.id;
@@ -73,10 +87,13 @@ export const getOrderInformation = asyncHandler(async (req, res, next) => {
   if (!orderInfo) {
     throw createError(404, "Order not found");
   }
-  console.log(orderInfo);
   res.status(200).json(orderInfo);
 });
 
+/**
+ * Fyzicky odstraní objednávku z databáze.
+ * @param {import('express').Request} req - ID zakázky v URL parametrech.
+ */
 export const deleteOrder = asyncHandler(async (req, res, next) => {
   const orderId = req.params.id;
   await deleteOrderById(orderId);
@@ -86,6 +103,10 @@ export const deleteOrder = asyncHandler(async (req, res, next) => {
   });
 });
 
+/**
+ * Veřejné vyhledávání zakázek s vyloučením vlastních nabídek firmy.
+ * @param {Object} req.query - Filtry pro vyhledávání (lokace, váha, termín).
+ */
 export const searchOrders = asyncHandler(async (req, res, next) => {
   const myCompanyId = req.user.company_id;
   const orders = await getOrders({
@@ -95,6 +116,11 @@ export const searchOrders = asyncHandler(async (req, res, next) => {
   res.status(200).json(orders);
 });
 
+/**
+ * Načte seznam zakázek přihlášené firmy rozdělený na aktivní a ukončené.
+ * @function getMyOrders
+ * @param {string} tab - Určuje filtr stavů ('active' nebo 'history').
+ */
 export const getMyOrders = asyncHandler(async (req, res, next) => {
   const companyId = req.user.company_id;
   const { page, tab = "active" } = req.query;
@@ -108,6 +134,11 @@ export const getMyOrders = asyncHandler(async (req, res, next) => {
   res.status(200).json(orders);
 });
 
+/**
+ * Zruší aktivní objednávku (storno) a odmítne všechny podané nabídky.
+ * @param {Object} req - Parametr id v URL.
+ * @throws {403} Pokud se uživatel snaží zrušit cizí zakázku.
+ */
 export const cancellMyOrder = asyncHandler(async (req, res, next) => {
   const orderId = req.params.id;
   const userId = req.user.id;
@@ -119,17 +150,12 @@ export const cancellMyOrder = asyncHandler(async (req, res, next) => {
       throw createError(404, "Zakázka nebyla nalezena");
     }
 
-    // 🔥 Главная защита: нельзя отменить чужой груз!
     if (order.company_id !== companyId) {
       throw createError(403, "Nemáte oprávnění stornovat tuto zakázku");
     }
 
-    // 2. Добавляем запись в историю статусов -> 'cancelled'
-    // (Используем ту самую функцию addOrderStatusHistory, которую мы починили в прошлом шаге)
     await addOrderStatusHistory(orderId, "cancelled", userId, client);
 
-    // 3. 🔥 Финализируем ставки: переводим ВСЕ предложения ТК в 'rejected'
-    // Теперь даже на уровне БД у ТК будет статус "Отклонено"
     await rejectAllOffersForOrder(orderId, client);
   });
   await addStatusHistoryByOrder(orderId, userId, ORDER_STATUSES.CANCELLED);
@@ -138,6 +164,12 @@ export const cancellMyOrder = asyncHandler(async (req, res, next) => {
     .json({ message: "Order successfully cancelled", error: false });
 });
 
+/**
+ * Podá cenovou nabídku na vybranou zakázku.
+ * @function addOrderOffer
+ * @param {number} price - Navrhovaná cena v těle požadavku.
+ * @throws {409} Pokud již firma na tuto zakázku nabídku podala.
+ */
 export const addOrderOffer = asyncHandler(async (req, res, next) => {
   const orderId = req.params.id;
   const companyId = req.user.company_id;
@@ -157,14 +189,15 @@ export const addOrderOffer = asyncHandler(async (req, res, next) => {
   }
 });
 
+/**
+ * Získá seznam všech nabídek podaných firmou přihlášeného uživatele.
+ * @function getMyOffers
+ */
 export const getMyOffers = asyncHandler(async (req, res, next) => {
-  // Достаем ID компании из токена текущего диспетчера
   const companyId = req.user.company_id;
 
   try {
     const offers = await getMyOffersByCompanyId(companyId);
-    // Возвращаем массив ставок на фронт
-    console.log(offers);
     res.status(200).json(offers);
   } catch (err) {
     console.error("Chyba při stahování nabídek:", err);
@@ -172,20 +205,20 @@ export const getMyOffers = asyncHandler(async (req, res, next) => {
   }
 });
 
-// order.controller.js (или offer.controller.js)
-
+/**
+ * Načte všechny přijaté nabídky pro konkrétní zakázku (pro potřeby zadavatele).
+ * @function getOrderOffers
+ * @param {string} id - ID zakázky.
+ */
 export const getOrderOffers = asyncHandler(async (req, res, next) => {
   const orderId = req.params.id;
 
-  // Базовая проверка
   if (!orderId || isNaN(orderId)) {
     return res.status(400).json({ message: "Neplatné ID zakázky" });
   }
 
   try {
-    // Дергаем нашу пушечную функцию из базы
     const offers = await getOffersByOrderId(orderId);
-    // Отдаем массив предложений (даже если он пустой, фронт сам покажет "Нет предложений")
     res.status(200).json(offers);
   } catch (err) {
     console.error("Chyba při stahování nabídek pro zakázku:", err);
@@ -193,20 +226,22 @@ export const getOrderOffers = asyncHandler(async (req, res, next) => {
   }
 });
 
+/**
+ * Přijme konkrétní cenovou nabídku, zafixuje cenu a odmítne ostatní zájemce.
+ * @function acceptOffer
+ * @param {string} id - ID přijímané nabídky v parametrech URL.
+ */
 export const acceptOffer = asyncHandler(async (req, res, next) => {
   const offerId = req.params.id;
-  const companyId = req.user.company_id; // Компания заказчика
-  const userId = req.user.id; // Диспетчер заказчика
+  const companyId = req.user.company_id;
+  const userId = req.user.id;
 
-  // 🔥 Вся логика внутри транзакции
   await runTransaction(async (client) => {
-    // 1. Находим ставку
     const offer = await getOfferByIdForUpdate(offerId, client);
     if (!offer) {
-      throw createError(404, "Nabídka nenalezena"); // Твоя функция createError
+      throw createError(404, "Nabídka nenalezena");
     }
 
-    // 2. Валидация прав доступа и логики
     if (offer.order_company_id !== companyId) {
       throw createError(403, "Nemáte oprávnění k této zakázce");
     }
@@ -216,29 +251,27 @@ export const acceptOffer = asyncHandler(async (req, res, next) => {
 
     const orderId = offer.order_id;
 
-    // 3. Делаем ставку выигрышной
     await updateOfferStatus(offerId, "accepted", client);
 
-    // 4. Отклоняем конкурентов
     await rejectOtherOffers(orderId, offerId, client);
 
-    // 5. Фиксируем цену в самом заказе
     await updateOrderPriceAndCurrency(orderId, offer.proposed_price, client);
 
-    // 6. Меняем статус заказа на "Назначен" (assigned)
     await addOrderStatusHistory(orderId, "assign", userId, client);
   });
-
-  // Если runTransaction отработал без ошибок (сделал COMMIT), отдаем успех
   res.status(200).json({
     message: "Nabídka byla úspěšně přijata",
     error: false,
   });
 });
 
+/**
+ * Přiřadí vozidlo k zakázce, změní stav soupravy a odešle QR kódy příjemci.
+ * @function assignVehicleToOrder
+ */
 export const assignVehicleToOrder = asyncHandler(async (req, res, next) => {
   const orderId = req.params.id;
-  const { compositionId } = req.body; // Получаем ID выбранной машины с фронта
+  const { compositionId } = req.body;
   const userId = req.user.id;
 
   if (!compositionId) {
@@ -246,13 +279,19 @@ export const assignVehicleToOrder = asyncHandler(async (req, res, next) => {
   }
 
   await runTransaction(async (client) => {
-    // 1. Привязываем машину к заказу
-    await assignCompositionToOrder(orderId, compositionId, client);
+    const recipientEmail = await assignCompositionToOrder(
+      orderId,
+      compositionId,
+      client,
+    );
 
-    // 2. Генерируем QR-коды для рейса
-    await generateOrderQRCodes(orderId, client);
+    const { deliveryToken } = await generateOrderQRCodes(orderId, client);
 
     await updateCompositionStatusByName(compositionId, "on_trip", client);
+
+    if (recipientEmail) {
+      await sendRecipientQRCode(recipientEmail, orderId, deliveryToken);
+    }
   });
 
   res.status(200).json({
@@ -261,6 +300,11 @@ export const assignVehicleToOrder = asyncHandler(async (req, res, next) => {
   });
 });
 
+/**
+ * Získá vygenerované QR kódy (pro nakládku a vykládku) k dané zakázce.
+ * @function getOrderQRCodes
+ * @throws {404} Pokud kódy ještě nebyly vygenerovány (před přiřazením vozu).
+ */
 export const getOrderQRCodes = asyncHandler(async (req, res) => {
   const orderId = req.params.id;
   const qrCodes = await getOrderQRCodesByOrderId(orderId);
@@ -272,34 +316,41 @@ export const getOrderQRCodes = asyncHandler(async (req, res) => {
   res.status(200).json(qrCodes);
 });
 
+/**
+ * Načte seznam zakázek, které jsou aktuálně přiřazeny přihlášenému řidiči.
+ * @function getDriverMyOrders
+ * @returns {Promise<Array>} Pole zakázek pro řidiče.
+ */
 export const getDriverMyOrders = asyncHandler(async (req, res, next) => {
-  const driverId = req.user.id; // Берем ID водителя из токена авторизации
+  const driverId = req.user.id;
 
   const orders = await getActiveOrdersByDriverId(driverId);
   res.status(200).json(orders);
 });
 
+/**
+ * Hlavní logistická funkce: Zpracuje naskenovaný QR kód a posune stav přepravy (nakládka/vykládka).
+ * @function scanOrderQRCode
+ * @param {string} token - Token z QR kódu v těle požadavku.
+ */
 export const scanOrderQRCode = asyncHandler(async (req, res) => {
   const orderId = req.params.id;
   const { token } = req.body;
-  const userId = req.user.id; // ID водителя
+  const userId = req.user.id;
 
   if (!token) {
     throw createError(400, "QR token chybí");
   }
 
-  // 1. Ищем токен в базе
   const validToken = await verifyOrderQrToken(orderId, token);
 
   if (!validToken) {
-    // Если токен не найден, выкидываем ошибку (код не от этого заказа)
     throw createError(400, "Neplatný QR kód pro tuto zakázku");
   }
 
   const tokenType = validToken.token_type;
   const currentStatus = await getLatestOrderStatus(orderId);
 
-  // Проверяем логику последовательности
   if (tokenType === "pickup" && currentStatus !== "assign") {
     throw createError(
       400,
@@ -317,7 +368,6 @@ export const scanOrderQRCode = asyncHandler(async (req, res) => {
   let newStatus = "";
   let responseMessage = "";
 
-  // 3. Запускаем безопасную транзакцию
   await runTransaction(async (client) => {
     if (tokenType === "pickup") {
       newStatus = "in_progress";
@@ -328,12 +378,10 @@ export const scanOrderQRCode = asyncHandler(async (req, res) => {
       responseMessage = "Náklad úspěšně doručen. Zakázka je dokončena!";
       await addOrderStatusHistory(orderId, newStatus, userId, client);
 
-      // ОСВОБОЖДАЕМ ФУРУ
       await freeUpVehicleComposition(orderId, client);
     }
   });
 
-  // 3. Отдаем успешный ответ фронтенду
   res.status(200).json({
     message: responseMessage,
     status: newStatus,

@@ -1,6 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import $api from '@/api/axiosInstance';
 
+/**
+ * Hook pro správu vlastních zakázek uživatele (Aktivní / Historie).
+ * @todo (UX) Nahradit nativní window.confirm() a window.prompt() za Shadcn.
+ */
 export const useMyFreights = () => {
   const [freights, setFreights] = useState([]);
   const [currentTab, setCurrentTab] = useState('active');
@@ -21,7 +25,6 @@ export const useMyFreights = () => {
         params: { page: pageNum, tab: tabToFetch },
       });
       const newData = res.data;
-      console.log(newData);
       setHasMore(newData.length === 20);
       if (isNewSearch) {
         setFreights(newData);
@@ -36,7 +39,6 @@ export const useMyFreights = () => {
   };
 
   const handleTabChange = async (newTab) => {
-    if (newTab === currentTab) return;
     setCurrentTab(newTab);
     setFreights([]);
     setPage(1);
@@ -59,7 +61,6 @@ export const useMyFreights = () => {
       'UPOZORNĚNÍ: Zrušení přijaté přepravy (Storno) může podléhat sankcím dle smlouvy!\n\nZadejte prosím důvod storna:'
     );
     if (reason === null || reason.trim() === '') {
-      console.log('Storno zrušeno uživatelem nebo nebyl zadán důvod.');
       return;
     }
     try {
@@ -75,7 +76,6 @@ export const useMyFreights = () => {
       if (observer.current) observer.current.disconnect();
       observer.current = new IntersectionObserver((entries) => {
         if (entries[0].isIntersecting && hasMore && !isLoadingRef.current) {
-          console.log('🔥 ДОКРУТИЛИ ДО КОНЦА! Грузим страницу:', page + 1);
           setPage((prevPage) => prevPage + 1);
         }
       });

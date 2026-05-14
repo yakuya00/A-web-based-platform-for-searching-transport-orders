@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-// 🔥 Импортируем весь арсенал shadcn
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import MyFreightsTable from '@/components/myFreights/MyFreightsTable';
@@ -16,26 +14,25 @@ import {
 } from '@/components/ui/sheet';
 import RatingDialog from '@/components/RatingDialog';
 
+/**
+ * Komponenta Moje zakázky (Správa vlastních nákladů).
+ */
 const MyFreights = () => {
   const navigate = useNavigate();
   const { data, actions } = useMyFreights();
-
-  // 🔥 СТЕЙТЫ ДЛЯ ПАНЕЛИ СО СТАВКАМИ
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [isOffersOpen, setIsOffersOpen] = useState(false);
   const [ratingData, setRatingData] = useState(null);
 
   const openRating = (orderId, targetCompanyId) => {
-    console.log('Нажал');
     setRatingData({ orderId, toCompanyId: targetCompanyId });
   };
 
-  const onAccept = () => {
+  const onAccept = async () => {
     setIsOffersOpen(false);
-    actions.handleTabChange(data.currentTab);
+    await actions.handleTabChange(data.currentTab);
   };
 
-  // Функция для открытия панели (ее мы прокинем в таблицу)
   const handleViewOffers = (orderId) => {
     setSelectedOrderId(orderId);
     setIsOffersOpen(true);
@@ -50,9 +47,7 @@ const MyFreights = () => {
   };
 
   const handleRatingSuccess = () => {
-    setRatingData(null); // Закрываем модалку
-    // TODO: Здесь круто было бы еще заново запросить список заказов (refetch),
-    // чтобы кнопка "Ohodnotit" исчезла, раз заказ уже оценен.
+    setRatingData(null);
   };
 
   return (
@@ -69,7 +64,6 @@ const MyFreights = () => {
         </Button>
       </div>
 
-      {/* 🔥 Используем мощь shadcn Tabs */}
       <Tabs
         value={data.currentTab}
         onValueChange={actions.handleTabChange}
@@ -107,7 +101,6 @@ const MyFreights = () => {
           </SheetHeader>
 
           <div className="p-6">
-            {/* Рендерим список ставок только если есть выбранный ID */}
             {selectedOrderId && (
               <OrderOffersList orderId={selectedOrderId} onAccept={onAccept} />
             )}
@@ -120,10 +113,8 @@ const MyFreights = () => {
         orderId={selectedOrderIdForQR}
       />
       {ratingData && (
-        // Темный полупрозрачный фон на весь экран (backdrop)
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity">
           <div className="relative animate-in zoom-in-95 duration-200">
-            {/* Кнопка закрытия модалки крестиком (если юзер передумал) */}
             <button
               onClick={() => setRatingData(null)}
               className="absolute -top-10 right-0 text-white/70 hover:text-white text-sm font-medium tracking-wider"
@@ -131,7 +122,6 @@ const MyFreights = () => {
               Zavřít &times;
             </button>
 
-            {/* САМ КОМПОНЕНТ РЕЙТИНГА */}
             <RatingDialog
               orderId={ratingData.orderId}
               toCompanyId={ratingData.toCompanyId}

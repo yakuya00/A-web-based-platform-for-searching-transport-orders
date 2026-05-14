@@ -22,7 +22,6 @@ const Accordeon = ({ icon, text, children }) => {
         </span>
       </button>
 
-      {/* Внутренности вкладки "Грузы" */}
       {isOpen && <>{children}</>}
     </div>
   );

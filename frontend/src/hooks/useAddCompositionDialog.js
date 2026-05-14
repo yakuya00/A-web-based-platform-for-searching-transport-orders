@@ -1,25 +1,34 @@
 import React, { useState, useMemo, useDebugValue, useEffect } from 'react';
 import $api from '@/api/axiosInstance';
 
+/**
+ * Hook pro správu stavu a logiky dialogu "Přidat jízdní soupravu".
+ * * Řeší:
+ * 1. Sběr dat o nové soupravě (Tahač + Návěs(y) + Řidič).
+ * 2. Dynamické přidávání a odebírání slotů pro návěsy.
+ * 3. Načítání dostupných řidičů z API.
+ * @param {Function} onSuccess - Callback volaný po úspěšném uložení soupravy.
+ * @param {Array} vehicles - Globální pole všech vozidel firmy.
+ * @todo Validace před odesláním.
+ * @todo (UX) Nahradit console.error.
+ */
 export const useAddCompositionDialog = (onSuccess, vehicles) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [drivers, setDrivers] = useState([]);
 
-  // Стейт конструктора сцепки
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     driver_id: '',
     truck_id: '',
-    trailers: [], // 🔥 Массив для скандинавских сцепок!
+    trailers: [],
   });
 
   const handleChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.id]: e.target.value }));
   };
 
-  // 🔥 ФУНКЦИИ ДЛЯ РАБОТЫ С МАССИВОМ ПРИЦЕПОВ
   const addTrailerSlot = () => {
     setFormData((prev) => ({ ...prev, trailers: [...prev.trailers, ''] }));
   };
@@ -37,11 +46,11 @@ export const useAddCompositionDialog = (onSuccess, vehicles) => {
     setFormData((prev) => ({ ...prev, trailers: newTrailers }));
   };
 
+  // --- API VOLÁNÍ ---
   const fetchDrivers = async () => {
     try {
       const res = await $api.get('company/drivers/');
       const newData = res.data;
-      console.log(newData);
       setDrivers(newData);
     } catch (error) {
       console.error('Chyba při nacitani ridicu:', error);
@@ -50,7 +59,7 @@ export const useAddCompositionDialog = (onSuccess, vehicles) => {
   };
 
   const handleSave = async () => {
-    console.log('Odesílám soupravu na backend:', formData);
+    setIsLoading(true);
     try {
       const payload = {
         ...formData,
@@ -72,8 +81,7 @@ export const useAddCompositionDialog = (onSuccess, vehicles) => {
     }
   };
 
-  // 🔥 Берем только ТЯГАЧИ, которые СВОБОДНЫ
-
+  // Načtení řidičů při připojení hooku
   useEffect(() => {
     fetchDrivers();
   }, []);
@@ -82,7 +90,6 @@ export const useAddCompositionDialog = (onSuccess, vehicles) => {
     return vehicles.filter((v) => v.vehicle_type === 'truck' && v.is_available);
   }, [vehicles]);
 
-  // 🔥 Берем только ПРИЦЕПЫ, которые СВОБОДНЫ
   const availableTrailers = useMemo(() => {
     return vehicles.filter(
       (v) => v.vehicle_type === 'trailer' && v.is_available

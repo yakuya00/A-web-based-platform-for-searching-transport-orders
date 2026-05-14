@@ -1,3 +1,9 @@
+/**
+ * Hlavní konfigurační soubor aplikace Express.
+ * Zde dochází k registraci middleware, definici CORS politiky a propojení všech modulárních routerů.
+ * @module app
+ */
+
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -16,40 +22,55 @@ import errorHandler from "./middlewares/errorHandler.js";
 import commonRouter from "./modules/common/common.routes.js";
 import chatRouter from "./modules/chat/chat.routes.js";
 
-const __filename = fileURLToPath(import.meta.url); // <-- для ESM
-const __dirname = path.dirname(__filename); // <-- для ESM
+// Konfigurace cest pro ES Moduly (ESM)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 
-app.use(logger("dev"));
+app.use(logger("dev")); // Výpis požadavků do konzole pro vývoj
+
+/**
+ * CORS KONFIGURACE
+ * Zajišťuje bezpečnou komunikaci mezi frontendem a backendem.
+ */
 app.use(
   cors({
-    // 1. Указываем ТОЧНЫЙ адрес фронтенда (без слэша в конце!)
     //origin: 'http://localhost:5173',
+
+    // Definice povolených domén (včetně mobilních zařízení v lokální síti)
     origin: [
-      "https://localhost:5173", // Для тестов с самого компа
-      "http://192.168.0.101:5173", // Для тестов с телефона! (твой IP)
+      "https://localhost:5173", // pro testy z pocitace
+      "http://192.168.0.101:5173", // Pro testy z telefona
     ],
 
-    // 2. Разрешаем куки (это критически важно для Refresh Token)
+    // Povolení odesílání cookies (nezbytné pro JWT Refresh Token v HttpOnly cookie)
     credentials: true,
   }),
 );
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
-app.use(express.static(path.join(__dirname, "public")));
 
-app.use("/auth", authRouter);
-app.use("/user", userRouter);
-app.use("/company", companyRouter);
-app.use("/vehicle", vehicleRouter);
-app.use("/vehicle-composition", compositionRouter);
-app.use("/order", orderRouter);
-app.use("/common", commonRouter);
-app.use("/rating", ratingRouter);
-app.use("/chat", chatRouter);
+app.use(express.json()); // Podpora pro JSON body v požadavcích
+app.use(express.urlencoded({ extended: false })); // Podpora pro URL-encoded data
+app.use(cookieParser()); // Parsování cookies pro práci s Refresh Tokenem
+app.use(express.static(path.join(__dirname, "public"))); // Statické soubory (obrázky, dokumenty)
 
+/**
+ * REGISTRACE ROUTERŮ (API ENDPOINTY)
+ */
+app.use("/auth", authRouter); // Autentizace a registrace
+app.use("/user", userRouter); // Správa uživatelů
+app.use("/company", companyRouter); // Profil firmy a nastavení
+app.use("/vehicle", vehicleRouter); // Evidence vozidel
+app.use("/vehicle-composition", compositionRouter); // Jízdní soupravy
+app.use("/order", orderRouter); // Objednávky, nabídky a přeprava
+app.use("/common", commonRouter); // Společné utility (geolokace, číselníky)
+app.use("/rating", ratingRouter); // Reputace a hodnocení
+app.use("/chat", chatRouter); // Komunikace v rámci zakázek
+
+/**
+ * CHYBOVÉ MIDDLEWARE
+ * Musí být definováno jako poslední pro zachycení všech chyb z routerů.
+ */
 app.use(errorHandler);
 
 export default app;

@@ -1,18 +1,26 @@
-import { getUserChatList } from "../chat/chat.repository.js"; // 🔥 Проверь правильность пути к файлу БД
-import createError from "http-errors"; // Или твоя утилита для ошибок
+/**
+ * Controller pro správu konverzací uživatele.
+ * @module modules/chat/сhat.controller
+ */
+
+import { getUserChatList } from "../chat/chat.repository.js";
+import createError from "http-errors";
 import asyncHandler from "express-async-handler";
 
-// Обертка asyncHandler (если используешь) или просто try-catch
-export const getMyChats = asyncHandler(async (req, res, next) => {
+/**
+ * Získá seznam všech chatů, kterých se účastní aktuálně přihlášený uživatel.
+ * @function getMyChats
+ * @param {import('express').Request} req - Request obsahující data uživatele z tokenu.
+ * @param {import('express').Response} res - Response pro odeslání seznamu chatů.
+ * @throws {HttpError} 401 - Pokud v objektu requestu chybí ID uživatele.
+ */
+export const getMyChats = asyncHandler(async (req, res) => {
   const userId = req.user.id;
   if (!userId) {
     throw createError(401, "Uživatel není autorizován");
   }
 
-  // Идем в базу за чатами
   const chats = await getUserChatList(userId);
-  console.log(chats);
 
-  // Отдаем на фронт
   res.status(200).json(chats);
 });

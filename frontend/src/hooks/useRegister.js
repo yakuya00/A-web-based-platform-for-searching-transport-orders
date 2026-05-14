@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import $api from '@/api/axiosInstance';
 
+/**
+ * Hook pro globální správu stavu multi-step registrace firmy a administrátora.
+ * @todo (UX) Nahradit nativní 'alert' Toast notifikací.
+ */
 export const useRegister = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -34,7 +39,6 @@ export const useRegister = () => {
     password: '',
   });
 
-  // Функция для обновления части данных (merging)
   const updateData = (fields) => {
     setFormData((prev) => ({ ...prev, ...fields }));
     setCompanyErrors((prev) => ({
@@ -53,32 +57,29 @@ export const useRegister = () => {
 
   const createPayload = () => {
     const payload = {
-      // --- ДАННЫЕ КОМПАНИИ ---
       company_name: formData.companyName,
       company_role_id: formData.companyRoleId,
 
       identifiers: [
         {
-          identifier_type_id: 1, // ID типа "ИНН/IČO" в твоей БД
+          identifier_type_id: 1,
           identifier_value: formData.companyIdentifier,
         },
       ],
 
       addresses: [
         {
-          address_type_id: 1, // ID типа "Юридический адрес"
-          nominatium_data: formData.nominatium_data, // Тот самый объект из OSM
+          address_type_id: 1,
+          nominatium_data: formData.nominatium_data,
         },
       ],
 
-      // --- ДАННЫЕ АДМИНА ---
       name: formData.userName,
       surname: formData.userSurname,
       email: formData.email,
       password: formData.password,
-      role_id: 1, // ID роли "Админ компании" (проверь в БД)
+      role_id: 1,
 
-      // Заглушки, если полей нет в форме (бекенд их ждет)
       phone: formData.phone || '+000000000',
       birthday: formData.birthday,
     };
@@ -86,37 +87,31 @@ export const useRegister = () => {
     return payload;
   };
 
-  // 🔥 Добавили аргумент finalData (данные с последнего шага)
   const handleFinalSubmit = async (finalData) => {
-    // 🔥 Склеиваем то, что уже было в стейте, с тем, что пришло прямо сейчас
     const basePayload = createPayload();
-    console.log(basePayload);
     const payload = { ...basePayload, ...finalData };
 
-    console.log('ОТПРАВКА НА БЭКЕНД:', payload); // Теперь тут 100% будут все данные!
-
     try {
-      const res = await fetch('http://localhost:5000/auth/full-registration', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (res.ok) {
-        alert('Регистрация успешна! (Проверь консоль)');
-        navigate('/login');
-      } else {
-        const err = await res.json();
-        if (res.status === 409 || err.message.toLowerCase().includes('email')) {
-          updateUserErrors({ email: err.message });
-        } else if (err.message.toLowerCase().includes('password')) {
-          updateUserErrors({ password: err.message });
-        } else {
-          alert('Ошибка: ' + err.message);
-        }
-      }
+      const res = await $api.post('/auth/full-registration', payload);
+      alert('Registrace proběhla úspěšně! Můžete se přihlásit.');
+      navigate('/login');
     } catch (e) {
-      console.error(e);
-      alert('Ошибка сети');
+      console.error('[REGISTRACE] Chyba:', err);
+
+      const serverMessage = err.response?.data?.message || '';
+      const status = err.response?.status;
+
+      if (status === 409 || serverMessage.toLowerCase().includes('email')) {
+        updateUserErrors({
+          email: serverMessage || 'Tento email je již registrován.',
+        });
+      } else if (serverMessage.toLowerCase().includes('password')) {
+        updateUserErrors({ password: serverMessage });
+      } else {
+        alert(
+          `Chyba registrace: ${serverMessage || 'Zkuste to prosím znovu.'}`
+        );
+      }
     }
   };
 

@@ -1,3 +1,8 @@
+/**
+ * Controller pro správu autentizace a uživatelských účtů.
+ * @module modules/auth/auth.controller
+ */
+
 import asyncHandler from "express-async-handler";
 import createError from "http-errors";
 
@@ -37,6 +42,10 @@ import {
 } from "../company/company.repository.js";
 import { jwt } from "zod";
 
+/**
+ * Účely bezpečnostních tokenů.
+ * @const {Object}
+ */
 export const PURPOSES = {
   EMAIL_VERIFICATION: 1,
   PASSWORD_RESET: 2,
@@ -46,22 +55,25 @@ const EMAIL_VERIFICATION_EXPIRATION_TIME = 24 * 60 * 60 * 1000; // 24 hours
 const RESET_PASSWORD_EXPIRATION_TIME = 24 * 60 * 60 * 1000; // 24 hours
 const REFRESH_TOKEN_EXPIRATION_TIME = 30 * 24 * 60 * 60 * 1000; // 30 days
 
+/**
+ * Přihlášení uživatele a generování JWT tokenů.
+ * @function login
+ * @param {Object} req - Request obsahující email a heslo.
+ * @param {Object} res - Response pro odeslání Access Tokenu a nastavení Cookie.
+ */
 export const login = asyncHandler(async (req, res, next) => {
   const { email, password } = req.body;
 
-  // const user = await validateUser(email);
   const user = await getUserByEmail(email);
 
-  const authError = createError(401, "Incorrect login or password");
-
   if (!user) {
-    throw authError;
+    throw createError(401, "Incorrect login or password");
   }
   //2. Compare password
   const isPasswordValid = await comparePasswords(password, user?.password_hash);
 
   if (!isPasswordValid) {
-    throw authError;
+    throw createError(401, "Incorrect login or password");
   }
 
   // 3. Generate and return token
@@ -85,6 +97,10 @@ export const login = asyncHandler(async (req, res, next) => {
   res.status(200).json({ accessToken });
 });
 
+/**
+ * Odhlášení uživatele a smazání aktivního sezení.
+ * @route POST /auth/logout
+ */
 export const logout = asyncHandler(async (req, res, next) => {
   const refreshToken = req.cookies.refreshToken;
   if (refreshToken) {
@@ -98,6 +114,11 @@ export const logout = asyncHandler(async (req, res, next) => {
   });
 });
 
+/**
+ * Registrace nového uživatele pod existující firmu (např. admin přidává řidiče).
+ * @function register
+ * @param {Object} req - Data nového uživatele.
+ */
 export const register = asyncHandler(async (req, res, next) => {
   const { name, surname, birthday, phone, email, password, role_id } = req.body;
   console.log(req.user);
@@ -137,6 +158,11 @@ export const register = asyncHandler(async (req, res, next) => {
   });
 });
 
+/**
+ * Kompletní registrace nové firmy, adresy a administrátorského účtu v rámci jedné transakce.
+ * @function registerFull
+ * @param {Object} req - Request s daty o firmě, adrese a uživateli.
+ */
 export const registerFull = asyncHandler(async (req, res, next) => {
   const {
     company_name,
@@ -212,6 +238,10 @@ export const registerFull = asyncHandler(async (req, res, next) => {
   });
 });
 
+/**
+ * Obnova Access Tokenu pomocí platného Refresh Tokenu.
+ * @route GET /auth/refresh-token
+ */
 export const refreshToken = asyncHandler(async (req, res, next) => {
   const refreshToken = req.cookies.refreshToken;
 
@@ -242,6 +272,12 @@ export const refreshToken = asyncHandler(async (req, res, next) => {
   res.status(200).json({ accessToken });
 });
 
+/**
+ * Ověření e-mailu uživatele po kliknutí na odkaz v e-mailu.
+ * @function verifyEmail
+ * @param {Object} req - Request obsahující token v query parametrech.
+ * @throws {HttpError} 400 - Pokud token chybí, je neplatný nebo vypršel.
+ */
 export const verifyEmail = asyncHandler(async (req, res, next) => {
   const token = req?.query?.token;
 
@@ -263,6 +299,11 @@ export const verifyEmail = asyncHandler(async (req, res, next) => {
   });
 });
 
+/**
+ * Znovuodeslání verifikačního e-mailu, pokud původní vypršel nebo nedorazil.
+ * @function resendVerificationEmail
+ * @param {Object} req - Request obsahující e-mail uživatele.
+ */
 export const resendVerificationEmail = asyncHandler(async (req, res, next) => {
   const { email } = req.body;
   if (!email) {
@@ -289,6 +330,11 @@ export const resendVerificationEmail = asyncHandler(async (req, res, next) => {
   });
 });
 
+/**
+ * Iniciace procesu obnovy hesla při jeho zapomenutí.
+ * @function forgotPassword
+ * @param {Object} req - Request s e-mailem, pro který se má heslo resetovat.
+ */
 export const forgotPassword = asyncHandler(async (req, res, next) => {
   const { email } = req.body;
   if (!email) {
@@ -312,6 +358,10 @@ export const forgotPassword = asyncHandler(async (req, res, next) => {
   });
 });
 
+/**
+ * Resetování zapomenutého hesla pomocí verifikačního tokenu.
+ * @function resetPassword
+ */
 export const resetPassword = asyncHandler(async (req, res, next) => {
   const { token, password } = req?.body;
   if (!token || !password) {

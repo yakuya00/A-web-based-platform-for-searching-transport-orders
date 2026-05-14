@@ -3,6 +3,15 @@ import { Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import $api from '@/api/axiosInstance';
 
+/**
+ * Komponenta pro udělení hodnocení (Rating) po dokončení zakázky.
+ * * Umožňuje uživateli ohodnotit protistranu 1-5 hvězdičkami a přidat textový komentář.
+ * @param {Object} props
+ * @param {number|string} props.orderId - ID zakázky, ke které se hodnocení váže.
+ * @param {number|string} props.toCompanyId - ID firmy, která je hodnocena.
+ * @param {Function} props.onRatingSuccess - Callback volaný po úspěšném uložení do DB (pro zavření modalu/refresh).
+ * @todo (Refactor) Převést na Shadcn UI
+ */
 const RatingDialog = ({ orderId, toCompanyId, onRatingSuccess }) => {
   const [hoveredStar, setHoveredStar] = useState(0);
   const [score, setScore] = useState(0);
@@ -10,6 +19,9 @@ const RatingDialog = ({ orderId, toCompanyId, onRatingSuccess }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
+  /**
+   * Odesílá data hodnocení na backend.
+   */
   const handleSubmit = async () => {
     if (score === 0) return;
     setIsSubmitting(true);
@@ -22,9 +34,8 @@ const RatingDialog = ({ orderId, toCompanyId, onRatingSuccess }) => {
         score,
         comment,
       });
-      if (onRatingSuccess) onRatingSuccess(); // Закрываем модалку или обновляем UI
+      if (onRatingSuccess) onRatingSuccess();
     } catch (err) {
-      // Показываем ошибку от твоего SQL-триггера
       setError(err.response?.data?.message || 'Něco se pokazilo');
     } finally {
       setIsSubmitting(false);
@@ -40,7 +51,6 @@ const RatingDialog = ({ orderId, toCompanyId, onRatingSuccess }) => {
         Jak jste byli spokojeni s průběhem přepravy?
       </p>
 
-      {/* ЗВЕЗДОЧКИ */}
       <div className="flex gap-2 justify-center mb-6">
         {[1, 2, 3, 4, 5].map((star) => (
           <Star
@@ -57,7 +67,6 @@ const RatingDialog = ({ orderId, toCompanyId, onRatingSuccess }) => {
         ))}
       </div>
 
-      {/* ТЕКСТ ОТЗЫВА */}
       <div className="mb-6">
         <textarea
           className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"
@@ -74,7 +83,6 @@ const RatingDialog = ({ orderId, toCompanyId, onRatingSuccess }) => {
         </div>
       )}
 
-      {/* КНОПКА */}
       <Button
         className="w-full h-12 text-lg font-semibold bg-blue-600 hover:bg-blue-700"
         onClick={handleSubmit}

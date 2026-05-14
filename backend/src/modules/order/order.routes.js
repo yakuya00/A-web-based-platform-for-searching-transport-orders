@@ -1,8 +1,14 @@
-import express from "express";
+/**
+ * Router pro komplexní správu objednávek přepravy (Order Management System).
+ * Pokrývá životní cyklus zakázky: vytvoření, vyhledávání, nabídky (offers),
+ * přiřazení vozidla a QR validaci.
+ * @module modules/order/order.routres
+ * @returns {import('express').Router} Express router.
+ */
 
+import express from "express";
 import { checkAuthentication } from "../../middlewares/authMiddleware.js";
 import { checkRole } from "../../middlewares/roleMiddleware.js";
-
 import {
   addOrder,
   getOrderInformation,
@@ -19,11 +25,14 @@ import {
   getDriverMyOrders,
   scanOrderQRCode,
 } from "./order.controller.js";
-
 import { USER_ROLES } from "../../constants/index.js";
 
 const router = express.Router();
 
+/**
+ * Vytvoření nové objednávky přepravy.
+ * @route POST /order/
+ */
 router.post(
   "/",
   checkAuthentication,
@@ -31,26 +40,33 @@ router.post(
   addOrder,
 );
 
+/**
+ * Podání cenové nabídky (offer) na existující zakázku.
+ * @route POST /order/:id/offer
+ * @param {string} id - ID objednávky.
+ */
 router.post(
   "/:id/offer",
   checkAuthentication,
   checkRole([USER_ROLES.ADMIN, USER_ROLES.MANAGER]),
   addOrderOffer,
 );
+
+/**
+ * Přímé přiřazení jízdní soupravy k zakázce (používá dopravce).
+ * @route POST /order/:id/assign-vehicle
+ */
 router.post(
   "/:id/assign-vehicle",
   checkAuthentication,
   checkRole([USER_ROLES.ADMIN, USER_ROLES.MANAGER]),
   assignVehicleToOrder,
-); ///////////////////////////////////////////////////////////////////////
+);
 
-router.post(
-  "/:id/assign-vehicle",
-  checkAuthentication,
-  checkRole([USER_ROLES.ADMIN, USER_ROLES.MANAGER]),
-  assignVehicleToOrder,
-); //////////////////////////////////////////////////////////////////
-
+/**
+ * Validace nakládky/vykládky pomocí skenování QR kódu řidičem.
+ * @route POST /order/:id/scan-qr
+ */
 router.post(
   "/:id/scan-qr",
   checkAuthentication,
@@ -58,6 +74,10 @@ router.post(
   scanOrderQRCode,
 );
 
+/**
+ * Zrušení vlastní objednávky (storno).
+ * @route POST /order/cancell/:id
+ */
 router.post(
   "/cancell/:id",
   checkAuthentication,
@@ -65,16 +85,21 @@ router.post(
   cancellMyOrder,
 );
 
-// router.get("/",
-//     checkAuthentication,
-//     );
-
+/**
+ * Seznam aktivních zakázek přiřazených konkrétnímu řidiči.
+ * @route GET /order/driver
+ */
 router.get(
   "/driver",
   checkAuthentication,
   checkRole([USER_ROLES.DRIVER]),
   getDriverMyOrders,
 );
+
+/**
+ * Veřejné vyhledávání volných zakázek na trhu.
+ * @route GET /order/search
+ */
 router.get(
   "/search",
   checkAuthentication,
@@ -82,6 +107,10 @@ router.get(
   searchOrders,
 );
 
+/**
+ * Seznam aktivních zakázek firmy uživatele (vlastní vytvořené).
+ * @route GET /order/my-active
+ */
 router.get(
   "/my-active",
   checkAuthentication,
@@ -89,6 +118,10 @@ router.get(
   getMyOrders,
 );
 
+/**
+ * Seznam nabídek (offers), které podala firma uživatele.
+ * @route GET /order/my-offers
+ */
 router.get(
   "/my-offers",
   checkAuthentication,
@@ -96,6 +129,10 @@ router.get(
   getMyOffers,
 );
 
+/**
+ * Seznam všech přijatých nabídek pro konkrétní zakázku.
+ * @route GET /order/:id/offer
+ */
 router.get(
   "/:id/offer",
   checkAuthentication,
@@ -103,6 +140,10 @@ router.get(
   getOrderOffers,
 );
 
+/**
+ * Získání QR kódů pro potvrzení fází přepravy.
+ * @route GET /order/:id/qr-codes
+ */
 router.get(
   "/:id/qr-codes",
   checkAuthentication,
@@ -110,6 +151,10 @@ router.get(
   getOrderQRCodes,
 );
 
+/**
+ * Přijetí konkrétní cenové nabídky a uzavření kontraktu.
+ * @route POST /order/offer/:id/accept
+ */
 router.post(
   "/offer/:id/accept",
   checkAuthentication,
@@ -117,8 +162,16 @@ router.post(
   acceptOffer,
 );
 
+/**
+ * Detailní informace o zakázce.
+ * @route GET /order/:id
+ */
 router.get("/:id", checkAuthentication, getOrderInformation);
 
+/**
+ * Fyzické odstranění/archivace zakázky.
+ * @route DELETE /order/:id
+ */
 router.delete(
   "/:id",
   checkAuthentication,
@@ -127,18 +180,3 @@ router.delete(
 );
 
 export default router;
-
-// ## 4. Заказы (zakázky)
-
-// - `GET    /api/orders` — поиск/фильтрация заказов (по локации, датам, размеру и т.д.)
-// - `POST   /api/orders` — создать заказ (отправитель)
-// - `GET    /api/orders/:id` — детали заказа
-// - `PUT    /api/orders/:id` — обновить заказ (до назначения)
-// - `DELETE /api/orders/:id` — отменить заказ
-
-// - `POST   /api/orders/:id/assign` — назначить исполнителя (carrier)
-// - `POST   /api/orders/:id/status` — сменить статус заказа (например, "in_progress", "completed")
-// - `GET    /api/orders/:id/history` — история статусов
-
-// - `GET    /api/orders/:id/qr?type=pickup|delivered` — получить QR-код для этапа (для водителя/отправителя)
-// - `POST   /api/orders/:id/confirm` — подтвердить этап по QR (водитель сканирует, отправляет токен)

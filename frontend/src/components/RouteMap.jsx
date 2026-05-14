@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-
-// Чиним иконки Leaflet
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 
@@ -15,13 +13,21 @@ let DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
+/**
+ * Komponenta pro zobrazení reálné trasy na mapě a výpočet logistických metrik.
+ * @param {Object} props
+ * @param {number} props.fromLat - Zeměpisná šířka nakládky.
+ * @param {number} props.fromLon - Zeměpisná délka nakládky.
+ * @param {number} props.toLat - Zeměpisná šířka vykládky.
+ * @param {number} props.toLon - Zeměpisná délka vykládky.
+ * @param {number|string} [props.price] - Nabízená celková cena za přepravu.
+ * @todo (Feature) Zobrazit do mapy i ikony nakládky/vykládky místo výchozích modrých markerů.
+ */
 const RouteMap = ({ fromLat, fromLon, toLat, toLon, price }) => {
   const start = [fromLat, fromLon];
   const end = [toLat, toLon];
 
   const [routePoints, setRoutePoints] = useState([]);
-
-  // 🔥 НОВЫЙ СТЕЙТ ДЛЯ ИНФО О МАРШРУТЕ (Расстояние и Время)
   const [routeInfo, setRouteInfo] = useState(null);
 
   useEffect(() => {
@@ -32,23 +38,17 @@ const RouteMap = ({ fromLat, fromLon, toLat, toLon, price }) => {
         const data = await response.json();
 
         if (data.routes && data.routes[0]) {
-          // Строим линию
+          // Transformace souřadnic z GeoJSON (Lon, Lat) do Leaflet (Lat, Lon)
           const coords = data.routes[0].geometry.coordinates.map((c) => [
             c[1],
             c[0],
           ]);
           setRoutePoints(coords);
 
-          // 🔥 ВЫТАСКИВАЕМ И СЧИТАЕМ КИЛОМЕТРЫ И ВРЕМЯ
-          // OSRM отдает дистанцию в метрах, делим на 1000
           const distKm = data.routes[0].distance / 1000;
-
-          // OSRM отдает время в секундах, переводим в часы и минуты
-
           const pricePerKm = (price / distKm).toFixed(2);
-
           const distKmStr = distKm.toFixed(0);
-          // Сохраняем в стейт
+
           setRouteInfo({ distance: distKmStr, pricePerKm: pricePerKm });
         }
       } catch (error) {
@@ -63,7 +63,6 @@ const RouteMap = ({ fromLat, fromLon, toLat, toLon, price }) => {
 
   return (
     <div className="h-64 w-full rounded-xl overflow-hidden border border-gray-200 shadow-inner relative z-0">
-      {/* 🔥 КРАСИВАЯ ПЛАШКА ПОВЕРХ КАРТЫ (Если данные загрузились) */}
       {routeInfo && (
         <div className="absolute top-3 right-3 z-[1000] bg-white/95 backdrop-blur shadow-md px-3 py-2 rounded-xl border border-gray-100 flex flex-col gap-0.5 pointer-events-none">
           <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">

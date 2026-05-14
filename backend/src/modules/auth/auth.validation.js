@@ -1,6 +1,15 @@
+/**
+ * Validační schémata pro autentizaci a registraci uživatelů/firem.
+ * @module modules/auth/auth.validation
+ */
+
 import z from "zod";
 import { mobileRegex, passwordRegex } from "../../config/regexConfig.js";
 
+/**
+ * Schéma pro základní registraci uživatele administrátorem.
+ * @const {z.ZodObject}
+ */
 export const registerSchema = z.object({
   body: z.object({
     name: z.string().min(1).trim(),
@@ -14,6 +23,10 @@ export const registerSchema = z.object({
   }),
 });
 
+/**
+ * Schéma pro přihlášení uživatele.
+ * @const {z.ZodObject}
+ */
 export const loginSchema = z.object({
   body: z.object({
     email: z.email(),
@@ -21,14 +34,10 @@ export const loginSchema = z.object({
   }),
 });
 
-const nominatimSchema = z.object({
-  place_id: z.number(),
-  display_name: z.string(),
-  lat: z.string(),
-  lon: z.string(),
-  address: z.record(z.any()), // Разрешаем любой объект с адресом, так как это сторонняя API
-});
-
+/**
+ * Schéma pro kompletní registraci firmy (včetně adres a identifikátorů).
+ * @const {z.ZodObject}
+ */
 export const fullRegisterSchema = z.object({
   body: z.object({
     company_name: z.string().min(1),

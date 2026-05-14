@@ -1,16 +1,22 @@
-import React, { useState, useMemo, useDebugValue, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import $api from '@/api/axiosInstance';
 
+/**
+ * Hlavní hook pro obsluhu rozhraní řidiče (Driver App).
+ * * Řeší:
+ * 1. Načítání zakázek, které dispečink přiřadil aktuálně přihlášenému řidiči.
+ * 2. Správu stavu pro otevření/zavření modulu fotoaparátu (skeneru).
+ * 3. Odesílání a verifikaci naskenovaných QR tokenů vůči backendu.
+ * @todo (UX) Nahradit 'alert' chybové hlášky za vizuální červenou obrazovku nebo Toast.
+ */
 export const useDriverApp = () => {
   const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Стейты для сканера
   const [activeScanOrder, setActiveScanOrder] = useState(null);
   const [scanResult, setScanResult] = useState(null);
   const [isVerifying, setIsVerifying] = useState(false);
 
-  // Загружаем список рейсов при открытии
   useEffect(() => {
     fetchDriverOrders();
   }, []);
@@ -27,26 +33,17 @@ export const useDriverApp = () => {
     }
   };
 
-  // Обработка успешного сканирования
   const handleScan = async (text) => {
-    console.log(text);
     if (text && activeScanOrder) {
       setIsVerifying(true);
 
       try {
-        // TODO: Здесь будет API вызов для проверки токена на бэкенде
         await $api.post(`/order/${activeScanOrder}/scan-qr`, { token: text });
-
-        console.log(`Odesílám token ${text} pro zakázku ${activeScanOrder}`);
-
-        setTimeout(() => {
-          setScanResult(
-            '✅ Úspěšně naskenováno! Status zakázky byl aktualizován.'
-          );
-          setIsVerifying(false);
-          // Обновляем список, чтобы сменился статус
-          fetchDriverOrders();
-        }, 1500);
+        setScanResult(
+          '✅ Úspěšně naskenováno! Status zakázky byl aktualizován.'
+        );
+        setIsVerifying(false);
+        fetchDriverOrders();
       } catch (error) {
         alert('❌ Neplatný QR kód pro tuto zakázku.');
         setIsVerifying(false);

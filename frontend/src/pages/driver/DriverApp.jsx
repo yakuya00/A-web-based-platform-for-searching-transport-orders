@@ -1,6 +1,6 @@
 import React from 'react';
 import { Scanner } from '@yudiel/react-qr-scanner';
-import { useNavigate } from 'react-router-dom'; // 🔥 Добавили навигацию
+import { useNavigate } from 'react-router-dom';
 import {
   Truck,
   MapPin,
@@ -8,30 +8,28 @@ import {
   QrCode,
   X,
   CheckCircle2,
-  ChevronRight,
-  LogOut, // 🔥 Добавили иконку выхода
+  LogOut,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useDriverApp } from '@/hooks/useDriverApp';
-import { useAuth } from '@/context/AuthContext'; // 🔥 Добавили наш крутой контекст
+import { useAuth } from '@/context/AuthContext';
 
+/**
+ * Mobilní aplikace pro řidiče (DriverApp).
+ */
 const DriverApp = () => {
   const { data, actions } = useDriverApp();
-
-  // 🔥 Вытаскиваем функцию выхода и навигатор
   const { logout } = useAuth();
   const navigate = useNavigate();
 
-  // 🔥 Обработчик нажатия на выход
   const handleLogout = async () => {
-    await logout(); // Контекст сам почистит localStorage и стейт
-    navigate('/login', { replace: true }); // Кидаем на экран логина
+    await logout();
+    navigate('/login', { replace: true });
   };
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-gray-100 flex flex-col relative shadow-2xl font-sans">
-      {/* 🔥 ОБНОВЛЕННАЯ ШАПКА: Добавили flex justify-between и кнопку выхода */}
+    <div className="max-w-5xl mx-auto min-h-screen bg-gray-100 flex flex-col relative shadow-2xl font-sans">
       <div className="bg-blue-600 text-white p-6 pb-8 rounded-b-3xl shadow-lg sticky top-0 z-10 flex justify-between items-start">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -41,7 +39,6 @@ const DriverApp = () => {
           <p className="text-slate-400 text-sm mt-1">Aplikace pro řidiče</p>
         </div>
 
-        {/* Кнопка выхода */}
         <button
           onClick={handleLogout}
           className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors active:scale-95"
@@ -52,7 +49,6 @@ const DriverApp = () => {
       </div>
 
       <div className="flex-1 p-4 -mt-4">
-        {/* Экран списка рейсов */}
         {!data.activeScanOrder && !data.scanResult && (
           <div className="space-y-4">
             {data.isLoading ? (
@@ -107,7 +103,7 @@ const DriverApp = () => {
                           Nakládka •{' '}
                           {new Date(order.pickup_date).toLocaleDateString()}
                         </p>
-                        <p className="text-sm font-semibold text-gray-900 line-clamp-1">
+                        <p className="text-sm font-semibold text-gray-900">
                           {order.pickup_location}
                         </p>
                       </div>
@@ -124,7 +120,7 @@ const DriverApp = () => {
                           Vykládka •{' '}
                           {new Date(order.delivery_date).toLocaleDateString()}
                         </p>
-                        <p className="text-sm font-semibold text-gray-900 line-clamp-1">
+                        <p className="text-sm font-semibold text-gray-900">
                           {order.delivery_location}
                         </p>
                       </div>
@@ -151,7 +147,6 @@ const DriverApp = () => {
           </div>
         )}
 
-        {/* Экран сканера */}
         {data.activeScanOrder && !data.isVerifying && !data.scanResult && (
           <div className="absolute inset-0 bg-black z-50 flex flex-col">
             <div className="p-4 flex justify-between items-center bg-gradient-to-b from-black/80 to-transparent absolute top-0 left-0 right-0 z-10">
@@ -175,7 +170,6 @@ const DriverApp = () => {
                     actions.handleScan(detectedCodes[0].rawValue);
                   }
                 }}
-                onError={(error) => console.log(error?.message)}
               />
               <div className="absolute inset-0 border-[40px] border-black/50"></div>
               <div className="absolute w-64 h-64 border-2 border-green-500 rounded-2xl shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]"></div>
@@ -187,7 +181,6 @@ const DriverApp = () => {
           </div>
         )}
 
-        {/* Экран загрузки и успеха */}
         {data.isVerifying && (
           <div className="absolute inset-0 bg-white z-50 flex flex-col items-center justify-center">
             <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mb-4"></div>

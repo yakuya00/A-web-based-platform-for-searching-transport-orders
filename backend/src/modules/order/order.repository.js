@@ -1,8 +1,23 @@
+/**
+ * Repository pro správu databázových operací s objednávkami.
+ * Zahrnuje práci s geografickými daty, historií stavů a výpočty hodnocení firem.
+ * @module modules/order/order.repository
+ */
+
 import pool from "../../config/db.js";
 import { generateRandomToken } from "../../utils/token.js";
 
 const getClient = (client) => client || pool;
 
+/**
+ * Vloží detailní informace o nové objednávce do databáze.
+ * @param {number} companyId - ID firmy zadavatele.
+ * @param {Object} orderInfo - Objekt s technickými parametry nákladu a platebními podmínkami.
+ * @param {number} loadingAddressId - ID adresy nakládky z tabulky locates.
+ * @param {number} unloadingAddressId - ID adresy vykládky z tabulky locates.
+ * @param {number} userId - ID uživatele, který objednávku vytvořil.
+ * @returns {Promise<number>} ID nově vytvořené objednávky.
+ */
 export const addOrderInfo = async (
   companyId,
   orderInfo,
@@ -16,6 +31,7 @@ export const addOrderInfo = async (
   const {
     loading_date,
     unloading_date,
+    recipient_email,
     length,
     height,
     weight,
@@ -37,15 +53,13 @@ export const addOrderInfo = async (
   const loadingDate = new Date(loading_date);
   const unloadingDate = new Date(unloading_date);
 
-  console.log(companyId);
-
   const {
     rows: [newOrderInfo],
   } = await db.query(
     `
         INSERT INTO orders
-        (company_id, loading_date, loading_address_id, unloading_date, unloading_address_id, length, height, weight, volume, cargo_description, cargo_type, cargo_condition, extra_info, price, currency, payment_term_days, payment_method, vehicle_requirements, external_comment, internal_comment, contact_user_id, created_by)
-        VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+        (company_id, loading_date, loading_address_id, unloading_date, unloading_address_id, recipient_email, length, height, weight, volume, cargo_description, cargo_type, cargo_condition, extra_info, price, currency, payment_term_days, payment_method, vehicle_requirements, external_comment, internal_comment, contact_user_id, created_by)
+        VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
         RETURNING id
     `,
     [
@@ -54,6 +68,7 @@ export const addOrderInfo = async (
       loadingAddressId,
       unloadingDate,
       unloadingAddressId,
+      recipient_email,
       length,
       height,
       weight,
@@ -77,6 +92,11 @@ export const addOrderInfo = async (
   return newOrderInfo.id;
 };
 
+/**
+ * Vytvoří prázdný záznam objednávky pouze s informací o tvůrci.
+ * @param {number} userId - ID uživatele.
+ * @returns {Promise<number>} ID vytvořené objednávky.
+ */
 export const insertOrder = async (userId, client = null) => {
   const db = getClient(client);
   const {
@@ -94,6 +114,12 @@ export const insertOrder = async (userId, client = null) => {
   return order.id;
 };
 
+/**
+ * Zaznamená změnu stavu objednávky do historie.
+ * @param {number} orderId - ID objednávky.
+ * @param {number} userId - ID uživatele, který změnu provedl.
+ * @param {number} orderStatusId - ID nového stavu z číselníku.
+ */
 export const addStatusHistoryByOrder = async (
   orderId,
   userId,
@@ -111,6 +137,13 @@ export const addStatusHistoryByOrder = async (
   );
 };
 
+/**
+ * Načte detailní informace o objednávce včetně souřadnic, kontaktů a hodnocení firmy.
+ * @param {number} orderId - ID objednávky.
+ * @param {number|null} [userId] - ID prohlížejícího uživatele (pro určení přístupu k chatu).
+ * @param {Object} [client] - DB klient.
+ * @returns {Promise<Object|null>} Detailní objekt objednávky nebo null, pokud neexistuje.
+ */
 export const getOrderInformationById = async (
   orderId,
   userId = null,
@@ -125,11 +158,8 @@ export const getOrderInformationById = async (
             o.id AS order_id,
             o.company_id,
             c.name AS company_name,
-            
             (SELECT COALESCE(ROUND(AVG(score), 1), 0) FROM ratings WHERE to_company_id = c.id) AS company_rating,
             (SELECT COUNT(id) FROM ratings WHERE to_company_id = c.id) AS company_rating_count,
-            
-            -- 🔥 ИСПРАВЛЕННЫЙ CHAT_ID: Вернет ID чата, ТОЛЬКО если смотрящий ($2) является водителем
             (
               SELECT id 
               FROM chats 
@@ -137,7 +167,6 @@ export const getOrderInformationById = async (
                 AND o.created_by != $2 
               LIMIT 1
             ) AS chat_id,
-
             o.contact_user_id,
             u_full.name AS contact_person_name,
             u_full.surname AS contact_person_surname,
@@ -190,6 +219,10 @@ export const getOrderInformationById = async (
   return orderInfo || null;
 };
 
+/**
+ * Fyzicky smaže objednávku podle ID.
+ * @param {number} orderId - ID objednávky ke smazání.
+ */
 export const deleteOrderById = async (orderId, client = null) => {
   const db = getClient(client);
   await db.query(
@@ -201,6 +234,13 @@ export const deleteOrderById = async (orderId, client = null) => {
   );
 };
 
+/**
+ * Podá cenovou nabídku dopravce na konkrétní zakázku.
+ * @param {number} orderId - ID zakázky.
+ * @param {number} companyId - ID dopravní společnosti.
+ * @param {number} price - Navrhovaná cena.
+ * @throws {Error} Pokud firma již nabídku na tuto zakázku podala (SQL Error 23505).
+ */
 export const addOrderOfferByOrderId = async (
   orderId,
   companyId,
@@ -225,6 +265,11 @@ export const addOrderOfferByOrderId = async (
   }
 };
 
+/**
+ * Načte seznam nabídek podaných firmou s pokročilou filtrací (skrývání starých zamítnutých nabídek).
+ * @param {number} companyId - ID firmy dopravce.
+ * @returns {Promise<Array>} Seznam nabídek s detaily zakázky a aktuálním stavem.
+ */
 export const getMyOffersByCompanyId = async (companyId, client = null) => {
   const db = getClient(client);
 
@@ -234,7 +279,6 @@ export const getMyOffersByCompanyId = async (companyId, client = null) => {
         oo.proposed_price,
         oo.status AS offer_status,
         oo.created_at AS offer_date,
-        
         o.id AS order_id,
         o.loading_date AS pickup_date,
         o.unloading_date AS delivery_date,
@@ -243,21 +287,14 @@ export const getMyOffersByCompanyId = async (companyId, client = null) => {
         o.currency,
         o.vehicle_composition_id,
         o.company_id,
-        
         loc_load.display_name AS pickup_location,
         loc_unload.display_name AS delivery_location,
-        
-        -- 🔥 Теперь берем не только имя статуса, но и время, когда он изменился
         latest_status.name AS order_status_name,
         latest_status.changed_at AS status_changed_at
-        
     FROM order_offers oo
     JOIN orders o ON oo.order_id = o.id
-    
     LEFT JOIN locates loc_load ON o.loading_address_id = loc_load.id
     LEFT JOIN locates loc_unload ON o.unloading_address_id = loc_unload.id
-    
-    -- LATERAL JOIN: берет последнюю запись из истории
     LEFT JOIN LATERAL (
         SELECT os.name, osh.changed_at 
         FROM order_status_history osh
@@ -265,24 +302,16 @@ export const getMyOffersByCompanyId = async (companyId, client = null) => {
         WHERE osh.order_id = o.id
         ORDER BY osh.changed_at DESC
         LIMIT 1
-    ) latest_status ON true
-    
+    ) latest_status ON true 
     WHERE oo.transport_company_id = $1
-      
-      -- 🔥 МАГИЯ ФИЛЬТРАЦИИ 24 ЧАСОВ:
-      -- Скрываем, если заказ отменен больше 24 часов назад
       AND NOT (
           latest_status.name = 'cancelled' 
           AND latest_status.changed_at < NOW() - INTERVAL '24 hours'
       )
-      -- 🔥 ДОПОЛНИТЕЛЬНО: Скрываем ставку, если мы проиграли (rejected) 
-      -- или вручную отменили ставку (cancelled), и с момента изменения статуса заказа прошло 24 часа
-      
       AND NOT (
           oo.status IN ('rejected', 'cancelled') 
           AND latest_status.changed_at < NOW() - INTERVAL '24 hours'
       )
-      
     ORDER BY oo.created_at DESC;
   `;
 
@@ -290,8 +319,11 @@ export const getMyOffersByCompanyId = async (companyId, client = null) => {
   return rows;
 };
 
-// order.repository.js (или offer.repository.js)
-
+/**
+ * Načte všechny podané nabídky pro konkrétní zakázku seřazené podle ceny.
+ * @param {number} orderId - ID zakázky.
+ * @returns {Promise<Array>} Pole nabídek včetně informací o dopravci a (statickém) hodnocení.
+ */
 export const getOffersByOrderId = async (orderId, client = null) => {
   const db = getClient(client);
 
@@ -305,21 +337,11 @@ export const getOffersByOrderId = async (orderId, client = null) => {
         oo.created_at AS offer_date,
         5.0 AS rating,
         0 AS reviews_count
-        
-        -- 🔥 Считаем рейтинг компании (если отзывов нет, ставим 5.0)
         --COALESCE(ROUND(AVG(r.score), 1), 5.0) AS rating,
-        
-        -- 🔥 Считаем количество отзывов
         --COUNT(r.id) AS reviews_count
-        
     FROM order_offers oo
     JOIN companies c ON oo.transport_company_id = c.id
-    -- LEFT JOIN ratings r ON r.to_company_id = c.id
-    
     WHERE oo.order_id = $1
-    
-    -- Группируем, потому что используем агрегатные функции (AVG, COUNT)
-    -- 🔥 Сортируем от самой дешевой к самой дорогой! Заказчикам важна цена.
     ORDER BY oo.proposed_price ASC;
   `;
 
@@ -327,6 +349,12 @@ export const getOffersByOrderId = async (orderId, client = null) => {
   return rows;
 };
 
+/**
+ * Dynamické vyhledávání zakázek s podporou filtrů, geolokace a paginace.
+ * Tato funkce obsluhuje jak "Burzu nákladů", tak "Moje zakázky".
+ * @param {Object} params - Filtrační parametry (souřadnice, váha, typ nákladu, statusy).
+ * @returns {Promise<Array>} Pole nalezených objednávek.
+ */
 export const getOrders = async (params, client = null) => {
   const db = getClient(client);
   const {
@@ -348,9 +376,7 @@ export const getOrders = async (params, client = null) => {
   const values = [];
   let paramIndex = 1;
 
-  // ==========================================
-  // 1. СОБИРАЕМ SELECT (ЧТО ВЫТЯГИВАЕМ)
-  // ==========================================
+  // 1. Definice sloupců (SELECT)
   let selectClause = `
     o.id,
     o.created_at AS date,
@@ -370,9 +396,7 @@ export const getOrders = async (params, client = null) => {
     carrier_comp.name AS carrier_company_name
   `;
 
-  // ==========================================
-  // 2. СОБИРАЕМ JOINS (БАЗОВЫЕ ТАБЛИЦЫ)
-  // ==========================================
+  // 2. Definice propojení tabulek (JOIN)
   let joinClause = `
     FROM orders o
     JOIN companies c ON o.company_id = c.id
@@ -390,13 +414,9 @@ export const getOrders = async (params, client = null) => {
 
   let whereClause = `WHERE 1=1`;
 
-  // ==========================================
-  // 🔥 3. ДИНАМИЧЕСКАЯ ИНЖЕКЦИЯ (ЕСЛИ ЭТО "МОИ ГРУЗЫ")
-  // ==========================================
-  // Добавляем колонку статуса в выборку (замени s.code на свою колонку)
+  // 3. Logika filtrů (Vlastní zakázky vs. Veřejná burza)
   selectClause += `, current_status.status_name AS status`;
 
-  // Добавляем джойн таблицы статусов (замени statuses и status_id на свои)
   joinClause += ` LEFT JOIN LATERAL (
         SELECT os.name AS status_name
         FROM order_status_history osh
@@ -407,20 +427,15 @@ export const getOrders = async (params, client = null) => {
     ) current_status ON true
   `;
   if (companyId) {
-    // Фильтруем по компании
     whereClause += ` AND o.company_id = $${paramIndex}`;
     values.push(companyId);
     paramIndex++;
     if (statuses && statuses.length > 0) {
-      // current_status.status_name - это то, что мы достали из истории
       whereClause += ` AND current_status.status_name = ANY($${paramIndex}::varchar[])`;
-      values.push(statuses); // Передаем массив ['completed', 'cancelled']
+      values.push(statuses);
       paramIndex++;
     }
   } else {
-    // 💡 СОВЕТ СЕНЬОРА: Если companyId НЕТ (это общая биржа),
-    // нам нужно показывать ТОЛЬКО активные грузы, чтобы юзеры не видели архив!
-    // Раскомментируй и подставь свой ID активного статуса:
     if (excludeCompanyId) {
       whereClause += ` AND o.company_id != $${paramIndex}`;
       values.push(excludeCompanyId);
@@ -429,9 +444,7 @@ export const getOrders = async (params, client = null) => {
     whereClause += ` AND current_status.status_name = 'created'`;
   }
 
-  // ==========================================
-  // 4. ОСТАЛЬНЫЕ ФИЛЬТРЫ
-  // ==========================================
+  // 4. Geografické vyhledávání (Rádius 50km pomocí PostGIS)
   if (fromLat && fromLon) {
     whereClause += ` AND ST_DWithin(l_from.geo_point::geography, ST_SetSRID(ST_MakePoint($${paramIndex}, $${paramIndex + 1}), 4326)::geography, 50000)`;
     values.push(parseFloat(fromLon), parseFloat(fromLat));
@@ -462,9 +475,6 @@ export const getOrders = async (params, client = null) => {
     paramIndex++;
   }
 
-  // ==========================================
-  // 5. СКЛЕИВАЕМ ВСЁ ВМЕСТЕ
-  // ==========================================
   const sqlQuery = `
     SELECT ${selectClause} 
     ${joinClause} 
@@ -478,8 +488,14 @@ export const getOrders = async (params, client = null) => {
   return orders.rows;
 };
 
+/**
+ * Načte nabídku a uzamkne řádek pro aktualizaci (Pessimistic Locking).
+ * Zabraňuje race condition při přijímání nabídek více dispečery.
+ * @param {number} offerId - ID nabídky.
+ * @returns {Promise<Object>} Nabídka včetně ID firmy zadavatele.
+ */
 export const getOfferByIdForUpdate = async (offerId, client) => {
-  const db = getClient(client); // Твоя функция-враппер
+  const db = getClient(client);
   const { rows } = await db.query(
     `
       SELECT oo.*, o.company_id AS order_company_id
@@ -492,7 +508,12 @@ export const getOfferByIdForUpdate = async (offerId, client) => {
   return rows[0];
 };
 
-// 2. Меняем статус одной ставки
+/**
+ * Aktualizuje stav konkrétní cenové nabídky (např. na 'accepted' nebo 'rejected').
+ * @param {number} offerId - ID nabídky.
+ * @param {string} status - Nový stav nabídky.
+ * @returns {Promise<void>}
+ */
 export const updateOfferStatus = async (offerId, status, client) => {
   const db = getClient(client);
   await db.query(`UPDATE order_offers SET status = $1 WHERE id = $2`, [
@@ -501,7 +522,13 @@ export const updateOfferStatus = async (offerId, status, client) => {
   ]);
 };
 
-// 3. Отклоняем всех остальных конкурентов
+/**
+ * Hromadně odmítne všechny ostatní nabídky pro danou objednávku.
+ * Používá se automaticky při přijetí vítězné nabídky.
+ * @param {number} orderId - ID objednávky.
+ * @param {number} winningOfferId - ID vítězné nabídky, která nebude odmítnuta.
+ * @returns {Promise<void>}
+ */
 export const rejectOtherOffers = async (orderId, winningOfferId, client) => {
   const db = getClient(client);
   await db.query(
@@ -510,11 +537,12 @@ export const rejectOtherOffers = async (orderId, winningOfferId, client) => {
   );
 };
 
-// ==========================================
-// order.repository.js
-// ==========================================
-
-// 4. Записываем цену в сам заказ
+/**
+ * Zafixuje konečnou dohodnutou cenu přímo v záznamu objednávky.
+ * @param {number} orderId - ID objednávky.
+ * @param {number} price - Konečná cena z vítězné nabídky.
+ * @returns {Promise<void>}
+ */
 export const updateOrderPriceAndCurrency = async (orderId, price, client) => {
   const db = getClient(client);
   await db.query(`UPDATE orders SET price = $1 WHERE id = $2`, [
@@ -523,7 +551,14 @@ export const updateOrderPriceAndCurrency = async (orderId, price, client) => {
   ]);
 };
 
-// 5. Обновляем историю статусов заказа
+/**
+ * Vloží nový záznam do historie stavů objednávky na základě názvu stavu.
+ * Používá poddotaz pro převod textového názvu stavu na ID.
+ * @param {number} orderId - ID objednávky.
+ * @param {string} statusName - Textový kód stavu (např. 'in_progress', 'completed').
+ * @param {number} changedByUserId - ID uživatele (dispečera nebo řidiče), který změnu provedl.
+ * @returns {Promise<void>}
+ */
 export const addOrderStatusHistory = async (
   orderId,
   statusName,
@@ -544,7 +579,12 @@ export const addOrderStatusHistory = async (
   );
 };
 
-// Проверяем, кто владелец груза (и лочим строку для транзакции)
+/**
+ * Ověří vlastnictví zakázky a uzamkne řádek pro aktualizaci.
+ * Zabraňuje race condition při rušení nebo úpravě zakázky.
+ * @param {number} orderId - ID objednávky.
+ * @returns {Promise<Object|null>} Objekt s id a company_id nebo null.
+ */
 export const getOrderOwnershipForUpdate = async (orderId, client) => {
   const db = getClient(client);
   const { rows } = await db.query(
@@ -554,7 +594,12 @@ export const getOrderOwnershipForUpdate = async (orderId, client) => {
   return rows[0];
 };
 
-// Жестко отклоняем все ставки по этому грузу
+/**
+ * Hromadně zruší všechny podané nabídky k dané zakázce (nastaví status 'cancelled').
+ * Používá se při stornování zakázky zadavatelem.
+ * @param {number} orderId - ID objednávky.
+ * @returns {Promise<void>}
+ */
 export const rejectAllOffersForOrder = async (orderId, client) => {
   const db = getClient(client);
   await db.query(
@@ -563,27 +608,37 @@ export const rejectAllOffersForOrder = async (orderId, client) => {
   );
 };
 
+/**
+ * Přiřadí konkrétní jízdní soupravu k objednávce a vrátí e-mail příjemce.
+ * @param {number} orderId - ID objednávky.
+ * @param {number} compositionId - ID jízdní soupravy.
+ * @returns {Promise<string|null>} E-mail příjemce pro následné odeslání QR kódu.
+ */
 export const assignCompositionToOrder = async (
   orderId,
   compositionId,
   client,
 ) => {
   const db = getClient(client);
-  await db.query(
-    `UPDATE orders SET vehicle_composition_id = $1 WHERE id = $2`,
+  const result = await db.query(
+    `UPDATE orders SET vehicle_composition_id = $1 WHERE id = $2 RETURNING recipient_email`,
     [compositionId, orderId],
   );
+
+  return result.rows[0]?.recipient_email || null;
 };
 
-// 3. 🔥 Генерируем и сохраняем QR-коды для погрузки и выгрузки
+/**
+ * Vygeneruje unikátní náhodné tokeny pro nakládku a vykládku a uloží je do databáze.
+ * @param {number} orderId - ID objednávky.
+ * @returns {Promise<Object>} Objekt s vygenerovanými tokeny { pickupToken, deliveryToken }.
+ */
 export const generateOrderQRCodes = async (orderId, client) => {
   const db = getClient(client);
 
-  // Генерируем два уникальных рандомных токена (по 16 байт, переведенных в hex)
   const pickupToken = generateRandomToken();
   const deliveryToken = generateRandomToken();
 
-  // Вставляем сразу оба токена в базу
   await db.query(
     `
       INSERT INTO order_qr_tokens (order_id, confirmation_type_id, qr_token)
@@ -597,6 +652,12 @@ export const generateOrderQRCodes = async (orderId, client) => {
   return { pickupToken, deliveryToken };
 };
 
+/**
+ * Aktualizuje provozní stav jízdní soupravy (např. na 'on_trip' nebo 'active').
+ * @param {number} compositionId - ID jízdní soupravy.
+ * @param {string} statusName - Název nového stavu.
+ * @returns {Promise<void>}
+ */
 export const updateCompositionStatusByName = async (
   compositionId,
   statusName,
@@ -611,6 +672,11 @@ export const updateCompositionStatusByName = async (
   );
 };
 
+/**
+ * Načte vygenerované QR tokeny pro konkrétní zakázku.
+ * @param {number} orderId - ID objednávky.
+ * @returns {Promise<Array>} Pole s tokeny a jejich typem (pickup/delivered).
+ */
 export const getOrderQRCodesByOrderId = async (orderId, client = null) => {
   const db = getClient(client);
   const { rows } = await db.query(
@@ -625,6 +691,11 @@ export const getOrderQRCodesByOrderId = async (orderId, client = null) => {
   return rows;
 };
 
+/**
+ * Načte aktivní zakázky přiřazené konkrétnímu řidiči skrze jeho jízdní soupravu.
+ * @param {number} driverId - ID řidiče z tabulky users.
+ * @returns {Promise<Array>} Seznam zakázek ve stavech 'assign' nebo 'in_progress'.
+ */
 export const getActiveOrdersByDriverId = async (driverId, client = null) => {
   const db = getClient(client);
   const query = `
@@ -634,17 +705,13 @@ export const getActiveOrdersByDriverId = async (driverId, client = null) => {
         o.unloading_date AS delivery_date,
         o.cargo_description,
         o.weight,
-        
         loc_load.display_name AS pickup_location,
         loc_unload.display_name AS delivery_location,
-        
         latest_status.name AS status_name
-        
     FROM orders o
     JOIN vehicle_compositions vc ON o.vehicle_composition_id = vc.id
     LEFT JOIN locates loc_load ON o.loading_address_id = loc_load.id
     LEFT JOIN locates loc_unload ON o.unloading_address_id = loc_unload.id
-    
     LEFT JOIN LATERAL (
         SELECT os.name 
         FROM order_status_history osh
@@ -653,8 +720,6 @@ export const getActiveOrdersByDriverId = async (driverId, client = null) => {
         ORDER BY osh.changed_at DESC
         LIMIT 1
     ) latest_status ON true
-    
-    -- 🔥 Ищем заказы, где водитель привязан к фуре, и заказ активен
     WHERE vc.driver_id = $1 
       AND latest_status.name IN ('assign', 'in_progress')
     ORDER BY o.loading_date ASC;
@@ -664,6 +729,12 @@ export const getActiveOrdersByDriverId = async (driverId, client = null) => {
   return rows;
 };
 
+/**
+ * Ověří, zda naskenovaný QR token odpovídá dané zakázce a zjistí jeho účel.
+ * @param {number} orderId - ID objednávky.
+ * @param {string} token - Unikátní QR token.
+ * @returns {Promise<Object|undefined>} Objekt s typem tokenu (pickup/delivered) nebo undefined.
+ */
 export const verifyOrderQrToken = async (orderId, token, client = null) => {
   const db = getClient(client);
   const { rows } = await db.query(
@@ -675,9 +746,14 @@ export const verifyOrderQrToken = async (orderId, token, client = null) => {
     `,
     [orderId, token],
   );
-  return rows[0]; // Вернет { token_type: 'pickup' } или undefined
+  return rows[0];
 };
 
+/**
+ * Po dokončení zakázky uvolní jízdní soupravu (nastaví status zpět na 'active').
+ * @param {number} orderId - ID dokončené objednávky.
+ * @returns {Promise<void>}
+ */
 export const freeUpVehicleComposition = async (orderId, client = null) => {
   const db = getClient(client);
   await db.query(
@@ -690,6 +766,11 @@ export const freeUpVehicleComposition = async (orderId, client = null) => {
   );
 };
 
+/**
+ * Získá aktuálně platný (poslední) název stavu objednávky.
+ * @param {number} orderId - ID objednávky.
+ * @returns {Promise<string|undefined>} Název stavu (např. 'in_progress').
+ */
 export const getLatestOrderStatus = async (orderId, client = null) => {
   const db = getClient(client);
   const { rows } = await db.query(

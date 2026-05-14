@@ -1,91 +1,129 @@
-import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom'; // Сразу добавил Link для роутинга
+import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import RoleGuard from '@/components/RoleGuard';
 import Accordeon from '@/components/ui/Accordeon';
+import {
+  Package,
+  Search,
+  PlusCircle,
+  Building2,
+  ClipboardList,
+  FileText,
+  Truck,
+  Users,
+} from 'lucide-react';
 
+/**
+ * Hlavní postranní navigační panel (Sidebar).
+ * @todo (Refactor) PŘEVÉST NA SHADCN UI:
+ */
 const Sidebar = () => {
   const location = useLocation();
-  const [isCompanyOpen, setIsCompanyOpen] = useState(true);
+
+  /**
+   * Detekuje, zda je odkaz aktivní na základě aktuální URL.
+   * @param {string} path - Cesta odkazu ke kontrole.
+   * @returns {string} Tailwind třídy pro aktivní/neaktivní stav.
+   */
   const isActive = (path) =>
     location.pathname === path
-      ? 'bg-blue-50 text-blue-700 font-semibold'
-      : 'text-gray-700 hover:bg-gray-100';
+      ? 'bg-slate-100 text-slate-900 font-semibold shadow-sm'
+      : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-colors';
+
+  const linkClass = 'px-3 py-1.5 rounded-lg flex items-center group gap-3';
+
   return (
     <aside className="w-64 bg-white border-r border-gray-200 flex flex-col shrink-0">
-      {/* Логотип */}
       <div className="h-16 flex items-center px-6 border-b border-gray-200">
-        <span className="text-2xl font-black text-blue-600 tracking-tight">
-          LOGIX.
-        </span>
+        <Link to="/">
+          <span className="text-2xl font-black text-blue-600 tracking-tight">
+            LOGIX.
+          </span>
+        </Link>
       </div>
 
-      {/* Ссылки меню */}
-      <nav className="flex-1 overflow-y-auto py-4 px-3 flex flex-col gap-1 text-sm font-medium text-gray-700">
-        {/* <Link
-          to="/"
-          className={`px-3 py-2.5 rounded-lg flex items-center gap-3 transition-colors ${isActive('/')}`}
+      <nav className="flex-1 overflow-y-auto py-4 px-3 flex flex-col gap-2 text-sm">
+        <Accordeon
+          icon={<Package className="w-5 h-5 text-slate-700" />}
+          text="Přepravy"
         >
-          <span className="text-lg">📊</span> Dashboard
-        </Link> */}
+          <div className="mt-1 flex flex-col gap-1 pl-7">
+            <RoleGuard requireCompanyPermission="CAN_SEE_FREIGHTS">
+              <Link
+                to="/freights/search"
+                className={`${linkClass} ${isActive('/freights/search')}`}
+              >
+                <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors shrink-0">
+                  <Search className="w-4 h-4" />
+                </div>
+                Hledat přepravu
+              </Link>
+            </RoleGuard>
 
-        {/* 2. ГРУЗЫ (Аккордеон) */}
-        <Accordeon icon="📦" text="Přepravy">
-          <div className="mt-1 ml-9 flex flex-col gap-1 border-l-2 border-gray-100 pl-3">
-            <Link
-              to="/freights/search"
-              className={`px-3 py-2 rounded-lg transition-colors ${isActive('/freights/search')}`}
-            >
-              🔍 Hledat přepravu
-            </Link>
-
-            {/* Право публиковать грузы: Грузовладельцы и Экспедиторы */}
             <RoleGuard requireCompanyPermission="CAN_ADD_FREIGHT">
               <Link
                 to="/freights/add"
-                className={`px-3 py-2 rounded-lg transition-colors ${isActive('/freights/add')}`}
+                className={`${linkClass} ${isActive('/freights/add')}`}
               >
-                ➕ Přidat nabídku
+                <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg group-hover:bg-emerald-600 group-hover:text-white transition-colors shrink-0">
+                  <PlusCircle className="w-4 h-4" />
+                </div>
+                Přidat nabídku
               </Link>
             </RoleGuard>
           </div>
         </Accordeon>
 
-        {/* 3. МОЯ КОМПАНИЯ (Аккордеон) */}
-
-        <Accordeon icon="🏢" text="Moje firma">
-          <div className="mt-1 ml-9 flex flex-col gap-1 border-l-2 border-gray-100 pl-3">
-            <Link
-              to="/my-orders"
-              className={`px-3 py-2 rounded-lg transition-colors ${isActive('/my-orders')}`}
-            >
-              📋 Aktivní zakázky
-            </Link>
-
-            {/* Здесь будет репутационная система после завершения заказа */}
-            <Link
-              to="/my-offers"
-              className={`px-3 py-2 rounded-lg transition-colors ${isActive('/company/history')}`}
-            >
-              📚 Moje nabidky
-            </Link>
-
-            {/* Модуль учета автопарка для Перевозчиков */}
-            <RoleGuard requireCompanyPermission="CAN_ADD_VEHICLE">
+        <Accordeon
+          icon={<Building2 className="w-5 h-5 text-slate-700" />}
+          text="Moje firma"
+        >
+          <div className="mt-1 flex flex-col gap-1 pl-7">
+            <RoleGuard requireCompanyPermission="CAN_ADD_FREIGHT">
               <Link
-                to="/fleet"
-                className={`px-3 py-2 rounded-lg transition-colors ${isActive('/company/fleet')}`}
+                to="/my-orders"
+                className={`${linkClass} ${isActive('/my-orders')}`}
               >
-                🚚 Vozový park
+                <div className="p-1.5 bg-purple-50 text-purple-600 rounded-lg group-hover:bg-purple-600 group-hover:text-white transition-colors shrink-0">
+                  <ClipboardList className="w-4 h-4" />
+                </div>
+                Aktivní zakázky
               </Link>
             </RoleGuard>
 
-            {/* Управление компанией - только для Админов */}
+            <RoleGuard requireCompanyPermission="CAN_SEE_FREIGHTS">
+              <Link
+                to="/my-offers"
+                className={`${linkClass} ${isActive('/my-offers')}`}
+              >
+                <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors shrink-0">
+                  <FileText className="w-4 h-4" />
+                </div>
+                Moje nabídky
+              </Link>
+            </RoleGuard>
+
+            <RoleGuard requireCompanyPermission="CAN_ADD_VEHICLE">
+              <Link
+                to="/fleet"
+                className={`${linkClass} ${isActive('/fleet')}`}
+              >
+                <div className="p-1.5 bg-amber-50 text-amber-600 rounded-lg group-hover:bg-amber-600 group-hover:text-white transition-colors shrink-0">
+                  <Truck className="w-4 h-4" />
+                </div>
+                Vozový park
+              </Link>
+            </RoleGuard>
+
             <RoleGuard requireUserPermission="CAN_MANAGE_COMPANY">
               <Link
                 to="/my-team"
-                className={`px-3 py-2 rounded-lg transition-colors ${isActive('/my-team')}`}
+                className={`${linkClass} ${isActive('/my-team')}`}
               >
-                👥 Můj tým
+                <div className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg group-hover:bg-indigo-600 group-hover:text-white transition-colors shrink-0">
+                  <Users className="w-4 h-4" />
+                </div>
+                Můj tým
               </Link>
             </RoleGuard>
           </div>

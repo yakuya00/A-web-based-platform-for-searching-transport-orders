@@ -4,7 +4,7 @@ import RouteMap from '@/components/RouteMap';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useFreightDrawer } from '@/hooks/useFreightDrawer';
-import OrderChat from './OrderChat'; // 🔥 Убедись, что путь правильный!
+import OrderChat from '@/components/OrderChat';
 import { useAuth } from '@/context/AuthContext';
 
 // Иконки
@@ -18,14 +18,26 @@ const getDate = (timestamp) => {
   });
 };
 
+/**
+ * Postranní informační panel (Drawer) s detailem přepravní zakázky.
+ * * Klíčové funkce:
+ * 1. Vizualizace trasy: Využívá RouteMap pro zobrazení cesty z bodu A do bodu B.
+ * 2. Technické parametry: Přehledné zobrazení váhy, objemu a rozměrů nákladu.
+ * 3. Nabídkový systém: Umožňuje dopravci podat cenový návrh přímo z detailu.
+ * 4. Kontextový chat: Integrovaná komunikace se zadavatelem zakázky.
+ * @param {Object} props
+ * @param {boolean} props.isOpen - Ovládá viditelnost panelu.
+ * @param {Function} props.onClose - Funkce pro zavření panelu.
+ * @param {number|string} props.freightId - ID nákladu pro načtení dat z API.
+ * @todo (Refactor) Rozdělit na menší sub-komponenty (FreightInfo, FreightRoute, FreightOffers).
+ * @todo (Refactor) Převést na Shadcn UI
+ */
 const FreightDrawer = ({ isOpen, onClose, freightId }) => {
   const { data, actions } = useFreightDrawer(isOpen, freightId, onClose);
   const { user } = useAuth();
 
-  // 🔥 Наше состояние для чата
   const [showChat, setShowChat] = useState(false);
 
-  // Сбрасываем чат при закрытии модалки
   useEffect(() => {
     if (!isOpen) setShowChat(false);
   }, [isOpen]);
@@ -35,7 +47,6 @@ const FreightDrawer = ({ isOpen, onClose, freightId }) => {
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-sm transition-opacity">
       <div className="w-full max-w-1/3 bg-white h-full shadow-2xl flex flex-col animate-slide-in-right overflow-y-auto">
-        {/* ШАПКА ПАНЕЛИ */}
         <div className="sticky top-0 bg-white z-100 px-6 py-4 border-b border-gray-100 flex justify-between items-center shadow-sm">
           <h2 className="text-xl font-bold text-gray-900">
             {showChat ? 'Chat k objednávce' : 'Detail objednávky'}
@@ -60,7 +71,6 @@ const FreightDrawer = ({ isOpen, onClose, freightId }) => {
           </button>
         </div>
 
-        {/* УСЛОВИЕ 1: ИДЕТ ЗАГРУЗКА */}
         {data.isLoading || !data.freight ? (
           <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
             <svg
@@ -85,14 +95,11 @@ const FreightDrawer = ({ isOpen, onClose, freightId }) => {
             </svg>
             <p className="font-medium">Načítám detaily...</p>
           </div>
-        ) : /* 🔥 УСЛОВИЕ 2: ЕСЛИ showChat = true, ПОКАЗЫВАЕМ ЧАТ */
-        showChat ? (
+        ) : showChat ? (
           <OrderChat freight={data.freight} onBack={() => setShowChat(false)} />
         ) : (
-          /* УСЛОВИЕ 3: ИНАЧЕ ПОКАЗЫВАЕМ ОБЫЧНЫЕ ДЕТАЛИ ГРУЗА */
           <>
             <div className="p-6 flex flex-col gap-8 flex-1">
-              {/* Маршрут */}
               <div className="bg-blue-50/50 p-5 rounded-2xl border border-blue-100 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500 opacity-5 rounded-bl-full pointer-events-none"></div>
                 <div className="flex flex-col gap-4 relative z-10">
@@ -134,7 +141,6 @@ const FreightDrawer = ({ isOpen, onClose, freightId }) => {
                 </div>
               )}
 
-              {/* Параметры груза */}
               <div>
                 <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
                   📦 Informace o nákladu
@@ -204,7 +210,6 @@ const FreightDrawer = ({ isOpen, onClose, freightId }) => {
                 </div>
               </div>
 
-              {/* Финансы */}
               <div>
                 <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
                   💰 Cena a platba
@@ -241,7 +246,6 @@ const FreightDrawer = ({ isOpen, onClose, freightId }) => {
                 </div>
               </div>
 
-              {/* Заказчик */}
               <div>
                 <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
                   🏢 Zadavatel
@@ -266,7 +270,6 @@ const FreightDrawer = ({ isOpen, onClose, freightId }) => {
               </div>
             </div>
 
-            {/* ФУТЕР С КНОПКАМИ */}
             <div className="p-6 bg-white border-t sticky bottom-0 z-10 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.05)]">
               {!data.showOfferForm ? (
                 <div className="flex gap-3">
@@ -278,7 +281,6 @@ const FreightDrawer = ({ isOpen, onClose, freightId }) => {
                     Podat nabídku
                   </Button>
 
-                  {/* 🔥 КНОПКА КОТОРАЯ ОТКРЫВАЕТ ЧАТ */}
                   {user.id !== data.freight.created_by && (
                     <Button
                       variant="outline"

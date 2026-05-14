@@ -9,12 +9,17 @@ import {
   getVehicleCompositionInCompany,
   deleteVehicleCompositionFromCompany,
   getAvailableCompositions,
+  changeVehicleComposition,
 } from "./composition.controller.js";
 
 import { USER_ROLES } from "../../constants/index.js";
 
 const router = express.Router();
 
+/**
+ * Získání seznamu všech jízdních souprav patřících firmě uživatele.
+ * @route GET /composition/
+ */
 router.get(
   "/",
   checkAuthentication,
@@ -22,6 +27,10 @@ router.get(
   getAllVehicleCompositionsInCompany,
 );
 
+/**
+ * Přidání nové jízdní soupravy do vozového parku firmy.
+ * @route POST /composition/
+ */
 router.post(
   "/",
   checkAuthentication,
@@ -29,6 +38,10 @@ router.post(
   addVehicleCompositionToCompany,
 );
 
+/**
+ * Načtení volných souprav, které aktuálně nejsou přiřazeny k žádné zakázce.
+ * @route GET /composition/available
+ */
 router.get(
   "/available",
   checkAuthentication,
@@ -36,6 +49,10 @@ router.get(
   getAvailableCompositions,
 );
 
+/**
+ * Detail konkrétní jízdní soupravy podle jejího ID.
+ * @route GET /composition/:id
+ */
 router.get(
   "/:id",
   checkAuthentication,
@@ -43,6 +60,10 @@ router.get(
   getVehicleCompositionInCompany,
 );
 
+/**
+ * Odstranění jízdní soupravy z evidence firmy.
+ * @route DELETE /composition/:id
+ */
 router.delete(
   "/:id",
   checkAuthentication,
@@ -50,6 +71,15 @@ router.delete(
   deleteVehicleCompositionFromCompany,
 );
 
-//router.put --- assing driver + change some properties
+/**
+ * Aktualizace parametrů soupravy (např. změna řidiče nebo technických údajů).
+ * @route PUT /composition/:id
+ */
+router.put(
+  "/:id",
+  checkAuthentication,
+  checkRole([USER_ROLES.ADMIN, USER_ROLES.MANAGER]),
+  changeVehicleComposition,
+);
 
 export default router;

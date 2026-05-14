@@ -6,23 +6,32 @@ import OrderChat from '../OrderChat'; // 🔥 ИМПОРТИРУЕМ ЧАТ СЮ
 
 const socket = io('/', { autoConnect: false });
 
+/**
+ * Hlavní komponent zpráv (Messenger) integrovaný se Socket.io.
+ * @param {Object} props
+ * @param {Function} props.setIsChatOpen - Funkce pro zavření celého postranního panelu chatu.
+ * @todo (Refactor) PŘEVÉST NA SHADCN UI:
+ * @todo (Logic) Vyčlenit logiku Socket.io do vlastního hooku 'useChatSocket'.
+ */
 const Chat = ({ setIsChatOpen }) => {
   const [chats, setChats] = useState([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
-
-  // 🔥 ВОТ ОН, НАШ СПАСИТЕЛЬ! Стейт для открытого диалога
   const [activeChat, setActiveChat] = useState(null);
 
   useEffect(() => {
     socket.connect();
+
+    // Vyžádání úvodních dat
     socket.emit('request_chats', { userId: user.id });
 
+    // Naslouchání na příchozí seznam chatů
     socket.on('receive_chats', (chatsData) => {
       setChats(chatsData);
       setLoading(false);
     });
 
+    // Reakce na globální aktualizaci (např. nová zpráva v jiném chatu)
     socket.on('chats_updated', () => {
       socket.emit('request_chats', { userId: user.id });
     });
@@ -42,7 +51,6 @@ const Chat = ({ setIsChatOpen }) => {
     });
   };
 
-  // 🔥 ЕСЛИ ЮЗЕР КЛИКНУЛ НА ЧАТ -> ПОКАЗЫВАЕМ САМ ЧАТ (Без всяких пробросов!)
   if (activeChat) {
     return (
       <div className="h-full bg-white relative w-full sm:w-[400px] lg:w-[450px] transition-all duration-300">
@@ -54,17 +62,14 @@ const Chat = ({ setIsChatOpen }) => {
             loading_address: activeChat.loading_address,
             unloading_address: activeChat.unloading_address,
           }}
-          // 🔥 Кнопка "Назад" просто сбрасывает стейт, и мы возвращаемся к списку!
           onBack={() => setActiveChat(null)}
         />
       </div>
     );
   }
 
-  // 👇 ИНАЧЕ ПОКАЗЫВАЕМ СПИСОК ЧАТОВ 👇
   return (
     <div className="flex flex-col h-full bg-white sm:w-[300px] lg:w-[350px] duration-300">
-      {/* ШАПКА */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-gray-100 shadow-sm">
         <div className="flex items-center gap-2 text-gray-900 font-bold text-lg">
           <MessageSquare className="w-5 h-5 text-blue-600" />
@@ -78,7 +83,6 @@ const Chat = ({ setIsChatOpen }) => {
         </button>
       </div>
 
-      {/* СПИСОК ДИАЛОГОВ */}
       <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2 bg-gray-50/50">
         {loading ? (
           <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-2">
@@ -99,8 +103,6 @@ const Chat = ({ setIsChatOpen }) => {
             return (
               <div
                 key={chat.chat_id}
-                // 🔥 ТУТ ПРОСТО КЛАДЕМ ЧАТ В СТЕЙТ!
-                // Никаких onOpenOrderChat и ебли с родителями.
                 onClick={() => setActiveChat(chat)}
                 className="p-3 bg-white hover:bg-blue-50/50 rounded-xl cursor-pointer border border-gray-100 hover:border-blue-200 transition-all shadow-sm group"
               >

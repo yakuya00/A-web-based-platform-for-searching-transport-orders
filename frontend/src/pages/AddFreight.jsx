@@ -7,8 +7,8 @@ import {
   FieldGroup,
   FieldLabel,
   FieldDescription,
-} from '@/components/ui/field'; // 🔥 Импортируем твои компоненты
-import { Button } from '@/components/ui/button'; // Обычная кнопка shadcn (если есть)
+} from '@/components/ui/field';
+import { Button } from '@/components/ui/button';
 import { useNominatim } from '@/hooks/useNominatim';
 import $api from '@/api/axiosInstance';
 import { useAuth } from '@/context/AuthContext';
@@ -38,6 +38,12 @@ const paymentMethods = [
   { id: 'hotove', name: 'hotove' },
 ];
 
+/**
+ * Komponenta pro vytvoření a publikaci nové poptávky po přepravě (Freight).
+ * @todo (Validation) Přesunout validaci do Zod/React-Hook-Form. Nyní chybí kontrola, zda uživatel skutečně vybral adresu z našeptávače (isSelected), nebo jen napsal text.
+ * @todo (UX) Přidat automatický výpočet vzdálenosti mezi body pomocí OSRM po vybrání obou adres a zobrazit odhadovanou cenu za kilometr.
+ * @todo (UI) Implementovat "Duplikovat poslední" – tlačítko pro předvyplnění dat z minulé zakázky (častý use-case u pravidelných tras).
+ */
 const AddFreight = () => {
   const navigate = useNavigate();
   const fromLocation = useNominatim();
@@ -47,6 +53,7 @@ const AddFreight = () => {
   const [formData, setFormData] = useState({
     loading_date: '',
     unloading_date: '',
+    recipient_email: '',
     weight: '',
     volume: '',
     length: '',
@@ -103,13 +110,11 @@ const AddFreight = () => {
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-8">
-        {/* 📍 БЛОК 1: МАРШРУТ */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <h2 className="text-lg font-bold text-gray-900 mb-5 flex items-center gap-2">
             <span>📍</span> Trasa a termín
           </h2>
           <FieldGroup className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Твой автокомплит. Так как внутри него уже есть лейбл, можно обернуть только для структуры, либо оставить как есть. Оставим пока без <Field>, так как он сложный */}
             <InputAutoComplete
               label="Odkud (Nakládka)"
               placeholder="Země, Město nebo PSČ..."
@@ -151,10 +156,24 @@ const AddFreight = () => {
                 onChange={handleChange}
               />
             </Field>
+
+            <Field className="md:col-span-2">
+              <FieldLabel>E-mail příjemce</FieldLabel>
+              <Input
+                name="recipient_email"
+                type="email"
+                placeholder="např. sklad@firma.cz"
+                value={formData.recipient_email}
+                onChange={handleChange}
+              />
+              <FieldDescription>
+                Na tento e-mail automaticky zašleme QR kód pro potvrzení
+                vykládky.
+              </FieldDescription>
+            </Field>
           </FieldGroup>
         </div>
 
-        {/* 📦 БЛОК 2: ГРУЗ */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <h2 className="text-lg font-bold text-gray-900 mb-5 flex items-center gap-2">
             <span>📦</span> Informace o nákladu
@@ -208,7 +227,6 @@ const AddFreight = () => {
           </FieldGroup>
 
           <FieldGroup className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Твой селект тоже можно переписать под Field в будущем, но пока оставим пропс */}
             <Field>
               <FieldLabel>Typ nákladu</FieldLabel>
               <Select
@@ -276,7 +294,6 @@ const AddFreight = () => {
           </FieldGroup>
         </div>
 
-        {/* 💰 БЛОК 3: ФИНАНСЫ */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <h2 className="text-lg font-bold text-gray-900 mb-5 flex items-center gap-2">
             <span>💰</span> Cena a platba
@@ -347,9 +364,9 @@ const AddFreight = () => {
           </FieldGroup>
         </div>
 
-        {/* КНОПКИ */}
         <Field orientation="horizontal" className="flex justify-end gap-4 mt-4">
           <Button
+            type="button"
             variant="tab"
             onClick={() => navigate('/')}
             className="px-6 py-3 text-gray-600 font-bold hover:bg-gray-100 rounded-xl transition-colors"

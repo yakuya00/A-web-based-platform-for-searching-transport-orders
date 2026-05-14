@@ -1,5 +1,18 @@
+/**
+ * ====================================================
+ * Middleware: Request Validation (Zod)
+ * Czech: Validace vstupních dat požadavku pomocí knihovny Zod.
+ * ====================================================
+ */
+
 import createError from "http-errors";
 
+/**
+ * Middleware pro validaci dat v req.body proti Zod schématu.
+ * * @param {Object} schema - Zod schéma definující pravidla.
+ * @returns {Function} Express middleware.
+ * @throws {HttpError} 400 - Při selhání validace vrací první nalezenou chybu.
+ */
 export const validateRequest = (schema) => {
   return (req, res, next) => {
     console.log(req.body);
@@ -11,14 +24,10 @@ export const validateRequest = (schema) => {
       next();
     } catch (error) {
       if (error.name === "ZodError") {
-        // Достаем только путь к полю и сообщение
         const formattedErrors = error.issues.map((issue) => ({
-          field: issue.path.join(".").replace("body.", ""), // Убираем 'body.', чтобы осталось просто 'password'
+          field: issue.path.join(".").replace("body.", ""),
           message: issue.message,
         }));
-
-        // Аккуратный лог в терминал бэкенда (без мусора)
-        console.log("❌ Ошибка валидации:", formattedErrors[0].message);
 
         throw createError(
           400,

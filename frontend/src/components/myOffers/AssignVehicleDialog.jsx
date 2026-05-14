@@ -18,6 +18,18 @@ import { Button } from '@/components/ui/button';
 import { Truck, User, CheckCircle2 } from 'lucide-react';
 import { useAssighVehicleDialog } from '@/hooks/useAssignVehicleDialog';
 
+/**
+ * Dialog pro finální přiřazení vozidla a řidiče k zakázce.
+ * * Tento komponent uzavírá proces plánování přepravy. Dispečer zde vybírá
+ * z již vytvořených jízdních souprav (Compositions), které mají přiděleného řidiče.
+ * Potvrzením tohoto dialogu se změní stav zakázky na 'assign' a systém automaticky
+ * vygeneruje unikátní QR tokeny pro nakládku a vykládku.
+ * @param {Object} props
+ * @param {boolean} props.isOpen - Stav otevření modálního okna.
+ * @param {Function} props.onClose - Funkce pro zavření dialogu bez uložení.
+ * @param {number|string} props.orderId - ID zakázky, ke které se technika přiřazuje.
+ * @param {Function} props.onSuccess - Callback volaný po úspěšném uložení (pro refresh dat).
+ */
 const AssignVehicleDialog = ({ isOpen, onClose, orderId, onSuccess }) => {
   const { data, actions } = useAssighVehicleDialog(
     isOpen,

@@ -21,8 +21,23 @@ import { Plus, Link as LinkIcon, X } from 'lucide-react';
 import { Description } from '@mui/icons-material';
 import { useAddCompositionDialog } from '@/hooks/useAddCompositionDialog';
 
+/**
+ * Dialogové okno pro vytvoření nové jízdní soupravy.
+ * * Tento komponent umožňuje dispečerovi sestavit soupravu (tahač + návěsy)
+ * a přiřadit k ní řidiče. Obsahuje pokročilou logiku pro dynamické přidávání
+ * a odebírání návěsů a zabraňuje výběru stejného vozidla do více slotů najednou.
+ * @param {Object} props
+ * @param {Function} props.onSuccess - Callback funkce volaná po úspěšném uložení soupravy (obvykle refresh dat).
+ * @param {Array} props.vehicles - Kompletní seznam vozidel firmy.
+ * @returns {JSX.Element}
+ */
 const AddCompositionDialog = ({ onSuccess, vehicles }) => {
+  /**
+   * Využití vlastního hooku pro oddělení logiky od UI.
+   * @see hooks/useAddCompositionDialog
+   */
   const { data, actions } = useAddCompositionDialog(onSuccess, vehicles);
+
   return (
     <Dialog open={data.isDialogOpen} onOpenChange={data.setIsDialogOpen}>
       <DialogTrigger asChild>
@@ -97,7 +112,6 @@ const AddCompositionDialog = ({ onSuccess, vehicles }) => {
             </Select>
           </div>
 
-          {/* 🔥 МАГИЯ: ДИНАМИЧЕСКИЙ СПИСОК ПРИЦЕПОВ */}
           <div className="mt-4 p-4 border rounded-lg bg-gray-50 space-y-3">
             <Label className="text-gray-700">
               Přípojná vozidla (Návěsy/Přívěsy)
@@ -118,22 +132,19 @@ const AddCompositionDialog = ({ onSuccess, vehicles }) => {
                   <SelectContent>
                     {data.availableTrailers
                       .filter((trailer) => {
-                        // 1. Делаем массив всех выбранных прицепов строками (для безопасного сравнения)
+                        /**
+                         * LOGIKA FILTRACE:
+                         * Zobrazujeme pouze návěsy, které ještě nejsou vybrány
+                         * v jiném slotu této soupravy, nebo ten, který je vybrán v tomto slotu.
+                         */
                         const usedTrailers = data.formData.trailers.map(String);
                         const currentTrailerId = trailer.id.toString();
-
-                        // 2. Проверяем, занят ли прицеп вообще?
                         const isUsed = usedTrailers.includes(currentTrailerId);
-
-                        // 3. Является ли он тем самым прицепом, который выбран в ТЕКУЩЕМ селекте?
                         const isCurrentSlot =
                           currentTrailerId === String(trailerId);
-
-                        // 🔥 МАГИЯ: Показываем, если он НЕ занят ИЛИ если это прицеп текущего слота
                         return !isUsed || isCurrentSlot;
                       })
                       .map((trailer) => (
-                        // Не забывай про key и .toString() в value, о которых мы говорили раньше!
                         <SelectItem
                           key={trailer.id}
                           value={trailer.id.toString()}
@@ -142,7 +153,7 @@ const AddCompositionDialog = ({ onSuccess, vehicles }) => {
                         </SelectItem>
                       ))}
 
-                    {/* Защита на случай, если прицепов больше нет */}
+                    {/* Fallback pokud jsou všechny návěsy již přiřazeny */}
                     {data.availableTrailers.length > 0 &&
                       data.availableTrailers.filter(
                         (t) =>

@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Label } from '@/components/ui/label';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { mobileRegex } from '@/config/regexConfig';
+import { Eye, EyeOff } from 'lucide-react';
 
 const today = new Date();
 const minAgeDate = new Date(
@@ -22,12 +24,7 @@ const maxAgeDate = new Date(
 const schema = z.object({
   name: z.string().min(2, 'Zadejte prosím své jméno.'),
   surname: z.string().min(2, 'Zadejte prosím své příjmení.'),
-  phone: z
-    .string()
-    .regex(
-      /^(?:\+420)? ?[1-9][0-9]{2} ?[0-9]{3} ?[0-9]{3}$/,
-      'Zadejte platné telefonní číslo.'
-    ),
+  phone: z.string().regex(mobileRegex, 'Zadejte platné telefonní číslo.'),
 
   email: z.string().email('Zadejte platný email.'),
   password: z.string().min(6, 'Heslo musí mít alespoň 6 znaků.'),
@@ -47,14 +44,19 @@ const schema = z.object({
     }),
 });
 
-export const ManagerForm = ({
-  data,
-  updateData,
-  onSubmit, // Это функция отправки на бэкенд из родителя
-  onBack,
-  // ⚠️ errors и setErrors больше не нужны!
-}) => {
-  // 🔥 2. Инициализация формы
+/**
+ * Finální krok registrace: Osobní údaje správce (Managera).
+ * @param {Object} props
+ * @param {Object} props.data - Dosud nasbíraná data z předchozích kroků.
+ * @param {Function} props.updateData - Funkce pro synchronizaci stavu.
+ * @param {Function} props.onSubmit - Finální funkce volající API registraci.
+ * @param {Function} props.onBack - Návrat k údajům o společnosti.
+ * @todo (UX) Přidat kontrolu síly hesla (indikátor: slabé/střední/silné).
+ * @todo (Security) Implementovat potvrzení hesla (Confirm Password field).
+ * @todo (Refactor) Vyčlenit schema do 'schemas/registration.js'.
+ * @todo (Refactor) PŘEVÉST CELÝ KOMPONENT NA SHADCN UI.
+ */
+export const ManagerForm = ({ data, updateData, onSubmit, onBack }) => {
   const {
     register,
     handleSubmit,
@@ -71,15 +73,16 @@ export const ManagerForm = ({
     },
   });
 
-  // 🔥 3. Функция отправки
   const onSubmitForm = (formData) => {
-    updateData(formData); // Обновляем глобальный стейт
-    onSubmit(formData); // Вызываем финальную регистрацию
+    updateData(formData);
+    onSubmit(formData);
   };
+
+  const [showPassword, setShowPassword] = useState(false);
 
   return (
     <form onSubmit={handleSubmit(onSubmitForm)} className="flex flex-col gap-4">
-      <h2 className="text-xl font-bold text-center text-secondary">
+      <h2 className="text-xl font-bold text-center text-gray-700">
         Vaše údaje
       </h2>
 
@@ -161,13 +164,28 @@ export const ManagerForm = ({
 
       <div className="flex flex-col gap-1 relative z-50">
         <Label htmlFor="password">Heslo</Label>
-        <Input
-          id="password"
-          type="password"
-          placeholder="••••••••••"
-          {...register('password')}
-          aria-invalid={errors.password ? 'true' : 'false'}
-        />
+        <div className="relative">
+          <Input
+            id="password"
+            type={showPassword ? 'text' : 'password'}
+            placeholder="••••••••••"
+            {...register('password')}
+            aria-invalid={errors.password ? 'true' : 'false'}
+            className="pr-10"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            {showPassword ? (
+              <EyeOff className="w-4 h-4" />
+            ) : (
+              <Eye className="w-4 h-4" />
+            )}
+          </button>
+        </div>
+
         {errors.password && (
           <span className="text-xs text-red-500 font-medium">
             {errors.password.message}

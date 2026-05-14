@@ -8,7 +8,6 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogFooter,
-  DialogDescription,
 } from '@/components/ui/dialog';
 import {
   Select,
@@ -19,11 +18,25 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Plus, Truck } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useAddVehicleDialog } from '@/hooks/useAddVehicleDialog';
 
+/**
+ * Dialogové okno pro registraci nového vozidla (tahače nebo návěsu) do flotily.
+ * * Komponent poskytuje komplexní formulář pro zadání technických specifikací vozidla,
+ * jako jsou rozměry, nosnost a objem. Data jsou odesílána na backend skrze
+ * hook, který zajišťuje validaci a loading stavy.
+ * @param {Object} props
+ * @param {Function} props.onSuccess - Callback funkce vyvolaná po úspěšném uložení vozidla (pro refresh seznamu).
+ * @returns {JSX.Element}
+ */
 const AddVehicleDialog = ({ onSuccess }) => {
+  /**
+   * Logika formuláře, správa stavu a API komunikace.
+   * @see hooks/useAddVehicleDialog
+   */
   const { data, actions } = useAddVehicleDialog(onSuccess);
+
   return (
     <Dialog open={data.isDialogOpen} onOpenChange={data.setIsDialogOpen}>
       <DialogTrigger asChild>
@@ -33,14 +46,12 @@ const AddVehicleDialog = ({ onSuccess }) => {
         </Button>
       </DialogTrigger>
 
-      {/* Добавили max-h и overflow, чтобы форма скроллилась, если экран маленький */}
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Nové vozidlo do flotily</DialogTitle>
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
-          {/* ТИП И SPZ */}
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label htmlFor="vehicle_type">Typ vozidla</Label>
@@ -71,7 +82,6 @@ const AddVehicleDialog = ({ onSuccess }) => {
             </div>
           </div>
 
-          {/* МАРКА, МОДЕЛЬ, ГОД */}
           <div className="grid grid-cols-3 gap-4">
             <div className="grid gap-2">
               <Label htmlFor="brand">Značka *</Label>
@@ -103,7 +113,6 @@ const AddVehicleDialog = ({ onSuccess }) => {
             </div>
           </div>
 
-          {/* ГАБАРИТЫ: ДЛИНА, ВЫСОТА, НОСНОСТЬ */}
           <div className="grid grid-cols-3 gap-4">
             <div className="grid gap-2">
               <Label htmlFor="length">Délka (m)</Label>
@@ -151,7 +160,6 @@ const AddVehicleDialog = ({ onSuccess }) => {
             />
           </div>
 
-          {/* ЗАМЕТКИ */}
           <div className="grid gap-2">
             <Label htmlFor="notes">Poznámky (nepovinné)</Label>
             <Textarea

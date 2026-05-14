@@ -1,5 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import $api from '@/api/axiosInstance';
+
+/**
+ * Hook pro logiku a stav dialogového okna "Přidat zaměstnance" (MyTeamDialog).
+ * * Zajišťuje:
+ * 1. Načtení dostupných firemních rolí (Admin, Manager, Driver) při otevření modalu.
+ * 2. Dynamickou validaci polí (Řidiči nepotřebují přihlašovací údaje, Dispečeři ano).
+ * 3. Odeslání registračních dat na backend a následný refresh tabulky týmu.
+ * @param {Function} onSuccess - Callback volaný po úspěšném vytvoření uživatele (např. pro refresh tabulky).
+ * @todo (Validation) Přepsat validaci do Zod/React-Hook-Form pro konzistenci s `ManagerForm` a `useLogin`.
+ */
 export const useMyTeamDialog = (onSuccess) => {
   const [roles, setRoles] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -20,13 +30,12 @@ export const useMyTeamDialog = (onSuccess) => {
   };
 
   const handleSave = async () => {
-    // Базовая валидация (чтобы не отправили пустые поля)
     if (!formData.name || !formData.surname || !formData.phone) {
       alert('Vyplňte prosím všechna povinná pole (Jméno, Příjmení, Telefon).');
       return;
     }
 
-    if (formData.role !== 'driver' && (!formData.email || !formData.password)) {
+    if (!formData.email || !formData.password) {
       alert('Pro administrátory a dispečery je nutné vyplnit email a heslo.');
       return;
     }
@@ -34,13 +43,9 @@ export const useMyTeamDialog = (onSuccess) => {
     setIsLoading(true);
     console.log(formData);
     try {
-      // Отправляем POST запрос
       const res = await $api.post('/auth/register', formData);
 
-      // Добавляем нового юзера в таблицу без перезагрузки страницы!
       onSuccess();
-
-      // Закрываем модалку и очищаем форму для следующего раза
       setIsDialogOpen(false);
       setFormData({
         role_id: undefined,
@@ -51,8 +56,6 @@ export const useMyTeamDialog = (onSuccess) => {
         email: '',
         password: '',
       });
-
-      // toast.success('Zaměstnanec byl úspěšně přidán!');
     } catch (error) {
       console.error('Chyba při přidávání zaměstnance:', error);
       alert(error.response?.data?.message || 'Něco se pokazilo.');
@@ -63,10 +66,9 @@ export const useMyTeamDialog = (onSuccess) => {
 
   const fetchRoles = async () => {
     try {
-      const res = await $api.get('/user/roles'); // Твой эндпоинт для ролей
+      const res = await $api.get('/user/roles');
       setRoles(res.data);
 
-      // Автоматически выбираем роль 'driver' по умолчанию, если она есть
       const defaultRole = res.data.find((r) => r.name === 'driver');
       if (defaultRole) {
         setFormData((prev) => ({

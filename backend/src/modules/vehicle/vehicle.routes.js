@@ -1,46 +1,66 @@
+/**
+ * Router pro správu vozového parku firmy (tahače, návěsy, přívěsy).
+ * @module modules/vehicle/vehicle.routes
+ * @returns {import('express').Router} Express router.
+ */
+
 import express from "express";
 
 import { checkAuthentication } from "../../middlewares/authMiddleware.js";
 import { checkRole } from "../../middlewares/roleMiddleware.js";
 import {
-    getAllVehiclesInCompany,
-    getVehicleInCompany,
-    addVehicleToCompany,
-    deleteVehicleFromCompany
+  getAllVehiclesInCompany,
+  getVehicleInCompany,
+  addVehicleToCompany,
+  deleteVehicleFromCompany,
 } from "./vehicle.controller.js";
 
 import { USER_ROLES } from "../../constants/index.js";
 
 const router = express.Router();
 
-router.get("/",
-    checkAuthentication,
-    checkRole([USER_ROLES.ADMIN, USER_ROLES.MANAGER]),
-    getAllVehiclesInCompany);
+/**
+ * Načte seznam všech vozidel (aktivních i neaktivních) patřících firmě.
+ * @route GET /vehicle/
+ */
+router.get(
+  "/",
+  checkAuthentication,
+  checkRole([USER_ROLES.ADMIN, USER_ROLES.MANAGER]),
+  getAllVehiclesInCompany,
+);
 
-router.post("/",
-    checkAuthentication,
-    checkRole([USER_ROLES.ADMIN, USER_ROLES.MANAGER]),
-    addVehicleToCompany);
+/**
+ * Zaregistruje nové vozidlo do evidence firmy.
+ * @route POST /vehicle/
+ */
+router.post(
+  "/",
+  checkAuthentication,
+  checkRole([USER_ROLES.ADMIN, USER_ROLES.MANAGER]),
+  addVehicleToCompany,
+);
 
-// router.get("/trucks",
-//     checkAuthentication,
-//     checkRole([USER_ROLES.ADMIN, USER_ROLES.MANAGER]),
-//     getAllTrucksInCompany);
+/**
+ * Získá detailní technické informace o konkrétním vozidle.
+ * @route GET /vehicle/:id
+ */
+router.get(
+  "/:id",
+  checkAuthentication,
+  checkRole([USER_ROLES.ADMIN, USER_ROLES.MANAGER]),
+  getVehicleInCompany,
+);
 
-// router.get("/trailers",
-//     checkAuthentication,
-//     checkRole([USER_ROLES.ADMIN, USER_ROLES.MANAGER]),
-//     getAllTrailersInCompany);
-
-router.get("/:id",
-    checkAuthentication,
-    checkRole([USER_ROLES.ADMIN, USER_ROLES.MANAGER]),
-    getVehicleInCompany);
-
-router.delete("/:id",
-    checkAuthentication,
-    checkRole([USER_ROLES.ADMIN, USER_ROLES.MANAGER]),
-    deleteVehicleFromCompany);
+/**
+ * Odstraní vozidlo z evidence firmy.
+ * @route DELETE /vehicle/:id
+ */
+router.delete(
+  "/:id",
+  checkAuthentication,
+  checkRole([USER_ROLES.ADMIN, USER_ROLES.MANAGER]),
+  deleteVehicleFromCompany,
+);
 
 export default router;

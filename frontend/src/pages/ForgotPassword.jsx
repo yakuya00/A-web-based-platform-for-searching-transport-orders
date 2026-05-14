@@ -12,12 +12,15 @@ const schema = z.object({
   email: z.email('Zadejte platný email.'),
 });
 
+/**
+ * Komponenta pro vyžádání odkazu na obnovu hesla.
+ * @todo (UX) Přidat "Resend email" timer (např. po 60 sekundách), pokud uživatel email neobdržel.
+ * @todo (Refactor) SHADCN UI
+ */
 const ForgotPassword = () => {
-  // Флаг, чтобы показать красивое сообщение после отправки
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // 🔥 2. Подключаем хук формы
   const {
     register,
     handleSubmit,
@@ -27,12 +30,11 @@ const ForgotPassword = () => {
     defaultValues: { email: '' },
   });
 
-  // 🔥 3. Отправка на бэкенд
   const onSubmit = async (data) => {
     setIsLoading(true);
     try {
       await $api.post(`/auth/forgot-password`, { email: data.email });
-      setIsSubmitted(true); // Успех! Прячем форму, показываем текст.
+      setIsSubmitted(true);
     } catch (error) {
       console.error(error);
     } finally {
@@ -43,7 +45,6 @@ const ForgotPassword = () => {
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-background p-4">
       <div className="bg-surface p-8 rounded-xl w-full max-w-sm flex flex-col gap-6 shadow-lg border border-gray-100">
-        {/* Шапка формы */}
         <div className="text-center">
           <h2 className="text-2xl font-bold text-secondary mb-2">
             Zapomenuté heslo
@@ -55,7 +56,6 @@ const ForgotPassword = () => {
           </p>
         </div>
 
-        {/* Форма показывается только если еще не отправили */}
         {!isSubmitted ? (
           <form
             onSubmit={handleSubmit(onSubmit)}
@@ -82,13 +82,11 @@ const ForgotPassword = () => {
             </Button>
           </form>
         ) : (
-          /* Кнопка "Вернуться", если письмо уже отправлено */
           <Button asChild className="w-full mt-2" variant="outline">
             <Link to="/login">Zpět na přihlášení</Link>
           </Button>
         )}
 
-        {/* Ссылка "Назад", если мы еще в режиме формы */}
         {!isSubmitted && (
           <div className="text-center mt-2">
             <Link

@@ -2,10 +2,15 @@ import pool from "../../config/db.js";
 
 const getClient = (client) => client || pool;
 
+/**
+ * Získá informace o firmách zapojených do objednávky a aktuální stav zakázky.
+ * Slouží k validaci, zda má uživatel právo hodnotit.
+ * @param {number} orderId - ID objednávky.
+ * @returns {Promise<Object|null>} Objekt s ID firem a názvem stavu zakázky.
+ */
 export const getCompaniesByOrderId = async (orderId, client = null) => {
   const db = getClient(client);
 
-  // 🔥 ИСПРАВЛЕНО: Убрали JOIN order_info, т.к. company_id теперь прямо в orders
   const { rows } = await db.query(
     `
         SELECT 
@@ -23,9 +28,14 @@ export const getCompaniesByOrderId = async (orderId, client = null) => {
     [orderId],
   );
 
-  return rows[0]; // Безопаснее, чем деструктуризация пустых массивов
+  return rows[0];
 };
 
+/**
+ * Pomocná funkce pro zjištění příslušnosti uživatele k firmě.
+ * @param {number} userId — ID uživatele.
+ * @returns {Promise<Object|undefined>} — Objekt obsahující company_id.
+ */
 export const getCompanyIdByUserId = async (userId, client = null) => {
   const db = getClient(client);
 
@@ -42,7 +52,12 @@ export const getCompanyIdByUserId = async (userId, client = null) => {
 
   return companyId;
 };
-
+/**
+ * Ověřuje, zda firma již k dané zakázce nezanechala hodnocení, aby se zamezilo duplicitám.
+ * @param {number} companyId — ID firmy, která hodnotí.
+ * @param {number} orderId — ID zakázky.
+ * @returns {Promise<Object|undefined>} — ID existujícího hodnocení, pokud existuje.
+ */
 export const getRatingByCompanyIdAndOrderId = async (
   companyId,
   orderId,
@@ -64,6 +79,14 @@ export const getRatingByCompanyIdAndOrderId = async (
   return rows[0];
 };
 
+/**
+ * Vloží nové hodnocení do systému.
+ * @param {number} orderId — ID související zakázky.
+ * @param {number} fromUserId — ID uživatele, který hodnocení vytváří.
+ * @param {number} toCompanyId — ID firmy, která je hodnocena.
+ * @param {number} score — Počet hvězdiček / bodů (0–5).
+ * @param {string} comment — Textový komentář k hodnocení.
+ */
 export const insertRating = async (
   orderId,
   fromUserId,

@@ -1,3 +1,8 @@
+/**
+ * Controller pro správu firemních profilů, rolí a dostupných řidičů.
+ * @module modules/company/company.controller
+ */
+
 import asyncHandler from "express-async-handler";
 import createError from "http-errors";
 
@@ -15,12 +20,17 @@ import { runTransaction, insertLocation } from "../../utils/dbUtils.js";
 
 import { USER_ROLES } from "../../constants/index.js";
 
+/**
+ * Vytvoří novou firmu včetně jejích identifikátorů (IČO/DIČ) a adres v rámci jedné transakce.
+ * @function createCompany
+ * @param {Object} req - Request obsahující název, roli, identifikátory a adresy.
+ * @returns {Promise<void>} Vrací ID vytvořené firmy.
+ */
 export const createCompany = asyncHandler(async (req, res, next) => {
   const { name, role_id, identifiers, addresses } = req.body;
-  //console.log(addresses);
   const companyId = await runTransaction(async (client) => {
     const company = await insertCompany(name, role_id, client);
-    console.log(company.id);
+
     if (identifiers && identifiers.length > 0) {
       for (const { identifier_type_id, identifier_value } of identifiers) {
         await insertCompanyIdentifier(
@@ -34,9 +44,7 @@ export const createCompany = asyncHandler(async (req, res, next) => {
 
     if (addresses && addresses.length > 0) {
       for (const { address_type_id, nominatium_data } of addresses) {
-        console.log(nominatium_data);
         const address_id = await insertLocation(nominatium_data, client);
-        console.log(address_type_id);
         await insertCompanyAddress(
           company.id,
           address_id,
@@ -55,6 +63,10 @@ export const createCompany = asyncHandler(async (req, res, next) => {
   });
 });
 
+/**
+ * Načte seznam všech možných rolí pro firmy (Dopravce, Odesílatel, Spedice).
+ * @function companyRolesList
+ */
 export const companyRolesList = asyncHandler(async (req, res, next) => {
   const companyRoles = await getCompanyRoles();
   if (companyRoles.length === 0) {
@@ -63,9 +75,13 @@ export const companyRolesList = asyncHandler(async (req, res, next) => {
   res.status(200).json(companyRoles);
 });
 
+/**
+ * Získá kompletní profil firmy včetně adres a identifikátorů.
+ * @function companyInfo
+ * @param {Object} req - Obsahuje ID firmy v parametrech a uživatele v req.user.
+ */
 export const companyInfo = asyncHandler(async (req, res, next) => {
   const companyId = Number(req.params.id);
-  console.log(req.user);
   const userCompanyId = req.user.company_id;
   const userRoleId = req.user.role_id;
 
@@ -95,9 +111,12 @@ export const companyInfo = asyncHandler(async (req, res, next) => {
   });
 });
 
+/**
+ * Načte seznam volných řidičů patřících k firmě přihlášeného uživatele.
+ * @function companyAvailableDrivers
+ */
 export const companyAvailableDrivers = asyncHandler(async (req, res, next) => {
   const companyId = req.user.company_id;
   const availableDrivers = await getDriversByCompanyId(companyId);
-  console.log(availableDrivers);
   res.status(200).json(availableDrivers);
 });

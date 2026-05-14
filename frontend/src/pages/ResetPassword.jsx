@@ -6,9 +6,9 @@ import { Label } from '@/components/ui/label';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import $api from '@/api/axiosInstance'; // Твой настроенный axios
+import $api from '@/api/axiosInstance';
 
-// 🔥 1. Схема с проверкой совпадения паролей
+// Definice validačního schématu s logikou shody
 const schema = z
   .object({
     password: z.string().min(6, 'Heslo musí mít alespoň 6 znaků.'),
@@ -16,11 +16,15 @@ const schema = z
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Hesla se neshodují.',
-    path: ['confirmPassword'], // Ошибка появится под вторым полем
+    path: ['confirmPassword'],
   });
 
+/**
+ * Komponenta pro nastavení nového hesla (Reset Password).
+ * @todo (UX) Přidat možnost "zobrazit heslo" (ikonka oka), aby se předešlo překlepům.
+ */
 const ResetPassword = () => {
-  // Вытаскиваем ?token=... из адресной строки
+  // Získání tokenu z URL (?token=xyz)
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
 
@@ -42,7 +46,6 @@ const ResetPassword = () => {
     setServerError('');
 
     try {
-      // 🔥 Отправляем ТОКЕН и НОВЫЙ ПАРОЛЬ на бэкенд
       await $api.post('/auth/reset-password', {
         token: token,
         password: data.password,
@@ -58,7 +61,6 @@ const ResetPassword = () => {
     }
   };
 
-  // Если юзер зашел по ссылке без токена, шлем его лесом
   if (!token) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 text-center">

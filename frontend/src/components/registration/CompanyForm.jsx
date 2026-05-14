@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { Input } from '@/components/ui/Input'; // Твой компонент Input
+import React, { useState } from 'react';
+import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Label } from '@/components/ui/label';
-import InputAutoComplete from '@/components/ui/InputAutoComplete'; // Твой компонент Input
+import InputAutoComplete from '@/components/ui/InputAutoComplete';
 import { useNominatim } from '@/hooks/useNominatim';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,24 +10,41 @@ import * as z from 'zod';
 
 const schema = z.object({
   companyName: z.string().min(2, 'Zadejte prosím název společnosti.'),
-  // IČO в Чехии обычно состоит из 8 цифр
-  companyIdentifier: z.string().min(6, 'Zadejte platné IČO.'),
-  // Проверяем, что юзер не просто ввел текст, а реально выбрал адрес из списка
+  companyIdentifier: z
+    .string()
+    .min(6, 'Zadejte platné IČO.')
+    .regex(/^\d{8}$/, 'Zadejte platné IČO.'),
   nominatium_data: z.any().refine((val) => val !== null && val !== '', {
     message: 'Vyberte prosím adresu vaší společnosti ze seznamu.',
   }),
 });
 
+/**
+ * Druhý krok registrace: Sběr firemních údajů.
+ * * Klíčové vlastnosti:
+ * 1. Validace IČO: Regex kontrola na 8 číslic (český standard).
+ * 2. Integrace Geocodingu: Využívá Nominatim API pro našeptávání adresy sídla.
+ * 3. Zod Schema: Zajišťuje, že uživatel nepokračuje bez reálného výběru adresy ze seznamu.
+ * @param {Object} props
+ * @param {Object} props.data - Aktuální stav registrace uložený v nadřazeném krokovém formuláři.
+ * @param {Function} props.updateData - Funkce pro synchronizaci lokálních dat s globálním registračním stavem.
+ * @param {Function} props.onNext - Přechod na další krok (např. výběr typu firmy).
+ * @param {Function} props.onBack - Návrat na předchozí krok (registrace uživatele).
+ * @todo (Refactor) Vyčlenit Zod schéma do externího souboru 'schemas/registration.js'.
+ * @todo (Feature) Implementovat vyber zeme.
+ * @todo (Architecture) Dynamická validace IČO: Místo hardkódovaného regexu v Zod schématu načítat 'regex_pattern' z databáze podle vybrané země.
+ * @todo (Refactor) PŘEVÉST CELÝ KOMPONENT NA SHADCN UI.
+ */
 export const CompanyForm = ({ data, updateData, onNext, onBack }) => {
   const address = useNominatim();
   const [isTyping, setIsTyping] = useState(false);
   const {
-    register, // Для привязки обычных инпутов
-    handleSubmit, // Перехватчик отправки
-    setValue, // Для ручной записи сложных данных (адреса)
-    formState: { errors }, // Отсюда достаем ошибки
+    register,
+    handleSubmit,
+    setValue,
+    formState: { errors },
   } = useForm({
-    resolver: zodResolver(schema), // Подключаем наши правила Zod
+    resolver: zodResolver(schema),
     defaultValues: {
       companyName: data.companyName || '',
       companyIdentifier: data.companyIdentifier || '',
@@ -36,36 +53,25 @@ export const CompanyForm = ({ data, updateData, onNext, onBack }) => {
   });
 
   const onSubmitForm = (formData) => {
-    updateData(formData); // Закидываем данные в общий стейт (для всей регистрации)
-    onNext(); // Переключаем шаг
+    updateData(formData);
+    onNext();
   };
 
-  // 🔥 4. ФИШКА ДЛЯ КАСТОМНОГО АВТОКОМПЛИТА
-  // Когда юзер выбирает адрес из списка хука
   const handleAddressSelect = (item) => {
     setIsTyping(true);
     address.selectItem(item);
-    // Принудительно говорим форме: "Смотри, поле nominatium_data заполнено! Ошибок нет."
     setValue('nominatium_data', item, { shouldValidate: true });
   };
 
-  // Если юзер начал стирать адрес вручную — сбрасываем выбор в форме
   const handleAddressChange = (e) => {
     setIsTyping(true);
     address.handleInputChange(e);
     setValue('nominatium_data', null, { shouldValidate: true });
   };
 
-  // Инициализация автокомплита при возврате назад (чтобы текст в поле не пропадал)
-  // useEffect(() => {
-  //   if (data.nominatium_data && !address.isSelected) {
-  //     setValue('nominatium_data', data.nominatium_data);
-  //   }
-  // }, []);
-
   return (
     <form onSubmit={handleSubmit(onSubmitForm)} className="flex flex-col gap-4">
-      <h2 className="text-xl font-bold text-center text-secondary">
+      <h2 className="text-xl font-bold text-center text-gray-700">
         Údaje o společnosti
       </h2>
       <div className="flex flex-col gap-1 relative z-50">
@@ -100,7 +106,6 @@ export const CompanyForm = ({ data, updateData, onNext, onBack }) => {
       <InputAutoComplete
         label="Sídlo společnosti"
         placeholder="Začněte psát adresu (min. 3 znaky)..."
-        // Значение берем из хука или из глобального стейта
         value={
           isTyping
             ? address.fullQuery
@@ -111,7 +116,6 @@ export const CompanyForm = ({ data, updateData, onNext, onBack }) => {
         items={address.items}
         onItemSelect={handleAddressSelect}
         isSelected={address.isSelected || !!data.nominatium_data}
-        // Ошибка из формы RHF
         error={errors.nominatium_data?.message}
       />
 

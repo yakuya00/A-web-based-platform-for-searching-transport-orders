@@ -16,40 +16,56 @@ import DriverApp from './pages/driver/DriverApp';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 
+/**
+ * Hlavní vstupní bod aplikace (Router).
+ * * Architektura routování:
+ * 1. Veřejné (Public): Auth flow (Login, Register, Reset).
+ * 2. Webové rozhraní: Chráněno MainLayoutem a oprávněním ACCESS_WEB_DASHBOARD.
+ * - Specifické pro Odesílatele: CAN_ADD_FREIGHT (Sekce My Orders).
+ * - Specifické pro Dopravce: CAN_SEE_FREIGHTS (Burza, Fleet, My Offers).
+ * 3. Mobilní rozhraní: Chráněno ACCESS_DRIVER_APP (Sekce pro řidiče).
+ */
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          {/* Главная страница */}
-          {/* <Route path="/" element={<Home />} /> */}
-
-          {/* Страница логина */}
+          {/* --- 1. VEŘEJNÉ CESTY (Bez nutnosti přihlášení) --- */}
           <Route path="/login" element={<Login />} />
-
           <Route path="/registration" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
 
-          {/* 2. Защищенные маршруты (доступны только после входа) */}
+          {/* --- 2. WEBOVÝ DASHBOARD (Pro dispečery a administrátory) --- */}
           <Route
             element={
               <ProtectedRoute requireUserPermission="ACCESS_WEB_DASHBOARD" />
             }
           >
             <Route element={<MainLayout />}>
-              {/* Сюда кладем всё, что нужно спрятать */}
               <Route path="/" element={<Home />} />
-              <Route path="/freights/search" element={<Freights />} />
-              <Route path="/freights/add" element={<AddFreight />} />
-              <Route path="/my-orders" element={<MyFreights />} />
+              <Route
+                element={
+                  <ProtectedRoute requireCompanyPermission="CAN_ADD_FREIGHT" />
+                }
+              >
+                <Route path="/my-orders" element={<MyFreights />} />
+                <Route path="/freights/add" element={<AddFreight />} />
+              </Route>
               <Route path="/my-team" element={<MyTeam />} />
-              <Route path="/fleet" element={<Fleet />} />
-              <Route path="/my-offers" element={<MyOffers />} />
-              {/* Потом добавишь сюда <Route path="/orders" ... /> */}
-              {/* <Route path="/chat" ... /> */}
+              <Route
+                element={
+                  <ProtectedRoute requireCompanyPermission="CAN_SEE_FREIGHTS" />
+                }
+              >
+                <Route path="/fleet" element={<Fleet />} />
+                <Route path="/my-offers" element={<MyOffers />} />
+                <Route path="/freights/search" element={<Freights />} />
+              </Route>
             </Route>
           </Route>
+
+          {/* --- 3. APLIKACE PRO ŘIDIČE (Izolované rozhraní) --- */}
           <Route
             element={
               <ProtectedRoute requireUserPermission="ACCESS_DRIVER_APP" />
@@ -58,8 +74,23 @@ function App() {
             <Route path="/driver" element={<DriverApp />} />
           </Route>
 
-          {/* Можно добавить 404 */}
-          <Route path="*" element={<div>Страница не найдена</div>} />
+          {/* --- 4. FALLBACK (404 Not Found) --- */}
+          <Route
+            path="*"
+            element={
+              <div className="min-h-screen flex items-center justify-center bg-gray-50 font-sans">
+                <div className="text-center">
+                  <h1 className="text-6xl font-black text-blue-600">404</h1>
+                  <p className="text-xl font-bold text-gray-900 mt-4">
+                    Stránka nenalezena
+                  </p>
+                  <p className="text-gray-500 mt-2">
+                    Omlouváme se, ale tato cesta v systému neexistuje.
+                  </p>
+                </div>
+              </div>
+            }
+          />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

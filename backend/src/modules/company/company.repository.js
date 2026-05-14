@@ -1,7 +1,18 @@
+/**
+ * Repository pro přímou práci s databází firem, jejich adres a personálu.
+ * @module modules/company/repository
+ */
+
 import pool from "../../config/db.js";
 
 const getClient = (client) => client || pool;
 
+/**
+ * Vloží základní údaje o firmě do databáze.
+ * @param {string} name - Název firmy.
+ * @param {number} roleId - ID role (Dopravce, Odesílatel, atd.).
+ * @returns {Promise<Object>} Vytvořený záznam firmy.
+ */
 export const insertCompany = async (name, roleId, client = null) => {
   const db = getClient(client);
   const {
@@ -18,6 +29,13 @@ export const insertCompany = async (name, roleId, client = null) => {
   return company;
 };
 
+/**
+ * Přidá identifikátor firmy (např. IČO, DIČ).
+ * @param {number} companyId - ID firmy.
+ * @param {number} identifierTypeId - ID typu identifikátoru.
+ * @param {string} identifierValue - Hodnota (např. '12345678').
+ * @returns {Promise<void>}
+ */
 export const insertCompanyIdentifier = async (
   companyId,
   identifierTypeId,
@@ -35,6 +53,13 @@ export const insertCompanyIdentifier = async (
   );
 };
 
+/**
+ * Přiřadí adresu ke konkrétní firmě.
+ * @param {number} companyId - ID firmy.
+ * @param {number} addressId - ID adresy z tabulky locates.
+ * @param {number} addressTypeId - ID typu adresy (Sídlo, pobočka).
+ * @returns {Promise<void>}
+ */
 export const insertCompanyAddress = async (
   companyId,
   addressId,
@@ -52,6 +77,10 @@ export const insertCompanyAddress = async (
   );
 };
 
+/**
+ * Načte seznam všech rolí firem.
+ * @returns {Promise<Array>} Pole rolí firem.
+ */
 export const getCompanyRoles = async (client = null) => {
   const db = getClient(client);
   const { rows } = await db.query(`
@@ -61,6 +90,11 @@ export const getCompanyRoles = async (client = null) => {
   return rows;
 };
 
+/**
+ * Získá detail firmy podle ID včetně názvu její role.
+ * @param {number} companyId - ID hledané firmy.
+ * @returns {Promise<Object|null>} Objekt firmy nebo null.
+ */
 export const getCompanyById = async (companyId, client = null) => {
   const db = getClient(client);
   const {
@@ -81,6 +115,11 @@ export const getCompanyById = async (companyId, client = null) => {
   return company;
 };
 
+/**
+ * Načte všechny identifikátory (IČO/DIČ) pro danou firmu.
+ * @param {number} companyId - ID firmy.
+ * @returns {Promise<Array>} Pole identifikátorů.
+ */
 export const getCompanyIdentifiersByCompanyId = async (
   companyId,
   client = null,
@@ -101,6 +140,11 @@ export const getCompanyIdentifiersByCompanyId = async (
   return rows;
 };
 
+/**
+ * Načte všechny adresy firmy včetně geografických bodů.
+ * @param {number} companyId - ID firmy.
+ * @returns {Promise<Array>} Pole adres s display_name a geo_point.
+ */
 export const getCompanyAddressesByCompanyId = async (
   companyId,
   client = null,
@@ -123,6 +167,11 @@ export const getCompanyAddressesByCompanyId = async (
   return rows;
 };
 
+/**
+ * Vyhledá všechny aktivní řidiče firmy, kteří aktuálně nejsou přiřazeni k žádné soupravě.
+ * @param {number} companyId - ID firmy.
+ * @returns {Promise<Array>} Seznam dostupných řidičů.
+ */
 export const getDriversByCompanyId = async (companyId, client = null) => {
   const db = getClient(client);
   const { rows } = await db.query(
@@ -131,7 +180,8 @@ export const getDriversByCompanyId = async (companyId, client = null) => {
     FROM users u
     JOIN user_roles r ON u.role_id = r.id
     WHERE u.company_id = $1 
-    AND r.name = 'driver' -- Берем только водителей
+    AND u.is_active
+    AND r.name ILIKE 'driver'
     AND NOT EXISTS (
       SELECT 1 
       FROM vehicle_compositions vc 

@@ -1,9 +1,18 @@
-import React, { useState } from 'react';
-
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { QrCode, Star } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Package,
+  QrCode,
+  Star,
+  Search,
+  UserCheck,
+  Truck,
+  CheckCircle2,
+  XCircle,
+  Trash2,
+  List,
+} from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -12,44 +21,89 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
+/**
+ * Interní komponenta pro vizuální odlišení stavu zakázky.
+ */
 const StatusBadge = ({ status }) => {
+  const baseClass =
+    'flex items-center gap-1.5 px-2.5 py-0.5 border-transparent font-semibold';
+
   switch (status) {
     case 'created':
       return (
-        <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border-transparent">
-          Aktivní
+        <Badge
+          className={`${baseClass} bg-blue-100 text-blue-800 hover:bg-blue-200`}
+        >
+          <Search className="w-3.5 h-3.5" /> Aktivní
         </Badge>
       );
-    case 'assign': // 🔥 ДОБАВИЛИ ASSIGNED (Желтый)
+    case 'assign':
       return (
-        <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 border-transparent">
-          Přiděleno
+        <Badge
+          className={`${baseClass} bg-amber-100 text-amber-800 hover:bg-amber-200`}
+        >
+          <UserCheck className="w-3.5 h-3.5" /> Přiděleno
         </Badge>
       );
     case 'in_progress':
       return (
-        <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 border-transparent">
-          V přepravě
+        <Badge
+          className={`${baseClass} bg-indigo-100 text-indigo-800 hover:bg-indigo-200`}
+        >
+          <Truck className="w-3.5 h-3.5" /> V přepravě
         </Badge>
       );
     case 'completed':
       return (
-        <Badge variant="outline" className="text-gray-500 bg-gray-50">
-          Dokončeno
+        <Badge
+          className={`${baseClass} bg-emerald-100 text-emerald-800 hover:bg-emerald-200`}
+        >
+          <CheckCircle2 className="w-3.5 h-3.5" /> Dokončeno
         </Badge>
       );
-    case 'cancelled': // 🔥 ДОБАВИЛИ CANCELLED (Красный)
+    case 'cancelled':
       return (
-        <Badge className="bg-red-100 text-red-800 hover:bg-red-100 border-transparent">
-          Stornováno
+        <Badge
+          className={`${baseClass} bg-red-100 text-red-800 hover:bg-red-200`}
+        >
+          <XCircle className="w-3.5 h-3.5" /> Stornováno
         </Badge>
       );
     default:
-      return <Badge variant="outline">{status}</Badge>;
+      return (
+        <Badge className={`${baseClass} bg-gray-100 text-gray-500`}>
+          {status}
+        </Badge>
+      );
   }
 };
 
+/**
+ * Tabulka pro správu vlastních zakázek (Odesílatel / Sklad).
+ * * Komponenta řeší kompletní životní cyklus zakázky z pohledu zadavatele:
+ * 1. Fáze 'created': Možnost prohlížet nabídky dopravců nebo zakázku smazat.
+ * 2. Fáze 'assign/in_progress': Správa potvrzení pomocí QR kódů nebo možnost storna.
+ * 3. Fáze 'completed': Možnost udělení hodnocení dopravci (Reputační systém).
+ * @param {Object} props
+ * @param {Array} props.filters - Seznam zakázek k zobrazení (přejmenovat na 'freights' pro čistotu).
+ * @param {Function} props.handleDelete - Odstranění vytvořené nabídky.
+ * @param {Function} props.onViewOffers - Přechod na seznam nabídek od dopravců.
+ * @param {Function} props.handleOpenQRDialog - Otevření rozhraní pro verifikaci nakládky/vykládky.
+ * @param {Function} props.handleOpenRating - Otevření formuláře pro hodnocení.
+ * @todo (Cleanup) Přejmenovat prop 'filters' na 'freights', aby název odpovídal obsahu.
+ */
 const MyFreightsTable = ({
   handleDelete,
   filters = [],
@@ -59,6 +113,21 @@ const MyFreightsTable = ({
   handleOpenQRDialog = null,
   handleOpenRating = null,
 }) => {
+  if (!filters || filters.length === 0) {
+    return (
+      <div className="p-12 text-center border-2 border-dashed rounded-lg text-gray-500">
+        <Package className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+        <h3 className="text-lg font-medium text-gray-900 mb-1">
+          Seznam zakázek je prázdný
+        </h3>
+        <p>
+          Zatím zde nemáte žádné zakázky. Jakmile se nějaké objeví, uvidíte je
+          přímo tady.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <Table>
       <TableHeader className="bg-gray-50/50">
@@ -113,75 +182,117 @@ const MyFreightsTable = ({
                   <StatusBadge status={freight.status} />
                 </TableCell>
                 <TableCell className="text-right">
-                  <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex justify-end gap-2 transition-opacity">
                     {freight.status === 'created' && (
                       <>
                         <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() =>
-                            console.log('Редактировать', freight.id)
-                          }
-                          className="h-8 text-xs bg-blue-50 text-blue-700 hover:bg-blue-100"
+                          variant="ghost"
+                          size="icon"
+                          title="Zobrazit nabídky"
+                          onClick={() => onViewOffers(freight.id)}
+                          className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-100"
                         >
-                          Upravit
+                          <List className="w-4 h-4" />
                         </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDelete(freight.id)}
-                          className="h-8 text-xs bg-red-50 text-red-700 hover:bg-red-100 shadow-none"
-                        >
-                          Smazat
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => onViewOffers(freight.id)} // 👈 ВЫЗЫВАЕМ ПРОКИНУТУЮ ФУНКЦИЮ
-                        >
-                          Zobrazit nabídky
-                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Smazat náklad"
+                              className="h-8 w-8 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                Jste si absolutně jisti?
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Tato akce trvale smaze zakazku. Tuto akci nelze
+                                vrátit zpět.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Zrušit</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDelete(freight.id)}
+                                className="bg-red-600 hover:bg-red-700 text-white"
+                              >
+                                Smazat
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </>
                     )}
+
                     {(freight.status === 'assign' ||
                       freight.status === 'in_progress') &&
                       handleOpenQRDialog && (
                         <Button
-                          variant="outline"
-                          size="sm"
+                          variant="ghost"
+                          size="icon"
+                          title="Zobrazit QR kódy"
                           onClick={() => handleOpenQRDialog(freight.id)}
-                          className="h-8 text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200 shadow-none"
+                          className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                         >
-                          <QrCode className="w-3 h-3 mr-1" />
-                          QR kódy
+                          <QrCode className="w-4 h-4" />
                         </Button>
                       )}
-
                     {freight.status === 'assign' && handleCancel && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleCancel(freight.id)}
-                        className="h-8 text-xs text-orange-600 border-orange-200 hover:bg-orange-50 hover:text-orange-700 shadow-none"
-                      >
-                        Stornovat
-                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Stornovat náklad"
+                            className="h-8 w-8 text-orange-500 hover:text-orange-700 hover:bg-orange-50"
+                          >
+                            <XCircle className="w-4 h-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>
+                              Jste si absolutně jisti?
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Opravdu chcete stornovat náklad? Tuto akci nelze
+                              vrátit zpět.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Stornovat</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleCancel(freight.id)}
+                              className="bg-orange-600 hover:bg-orange-700 text-white"
+                            >
+                              Smazat
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     )}
+
                     {freight.status === 'completed' && handleOpenRating && (
                       <Button
-                        variant="outline"
-                        size="sm"
-                        // Заказчик оценивает Перевозчика (убедись, что с бэкенда приходит carrier_company_id)
+                        variant="ghost"
+                        size="icon"
+                        title="Ohodnotit dopravce"
                         onClick={() =>
                           handleOpenRating(
                             freight.id,
                             freight.carrier_company_id
                           )
                         }
-                        className="h-8 text-xs bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-100 shadow-none"
+                        className="h-8 w-8 text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50"
                       >
-                        <Star className="w-3 h-3 mr-1" />
-                        Ohodnotit
+                        <Star className="w-4 h-4" />
                       </Button>
                     )}
                   </div>

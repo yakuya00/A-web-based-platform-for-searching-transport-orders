@@ -1,11 +1,13 @@
+/**
+ * Hlavní spouštěcí soubor serveru.
+ * Integruje HTTP server s technologií WebSockets (Socket.io) pro real-time chat.
+ * @module server
+ */
+
 import debugLib from "debug";
 import http from "http";
 import app from "./app.js";
-
-// 🔥 1. Импортируем Socket.io
 import { Server } from "socket.io";
-
-// 🔥 2. Импортируем твои функции для работы с БД (УТОЧНИ ПУТЬ к файлу!)
 import {
   getOrCreateChat,
   getChatMessages,
@@ -13,107 +15,9 @@ import {
   saveChatMessage,
 } from "./modules/chat/chat.repository.js";
 
-const debug = debugLib("web-platform:server");
-const port = normalizePort(process.env.PORT || "5000");
-app.set("port", port);
-
-// Создаем HTTP сервер
-const server = http.createServer(app);
-
-// ==========================================================
-// 🔥 3. НАСТРОЙКА WEB SOCKETS (ЧАТ)
-// ==========================================================
-const io = new Server(server, {
-  cors: {
-    origin: [
-      "http://localhost:5173",
-      "http://192.168.0.101:5173",
-      "https://192.168.0.101:5173", // На всякий случай разрешаем и HTTPS для телефона
-    ],
-    credentials: true,
-  },
-});
-
-io.on("connection", (socket) => {
-  console.log("⚡ Пользователь подключился к сокетам! ID:", socket.id);
-
-  // Клиент заходит в комнату заказа
-  socket.on("join_chat", async ({ orderId, chatId, userId }) => {
-    try {
-      let currentChatId = chatId;
-
-      // Если chatId нет (водитель впервые нажал "Написать" в доске грузов)
-      if (!currentChatId) {
-        // Ищем/создаем чат для этого заказа и ЭТОГО водителя
-        currentChatId = await getOrCreateChat(orderId, userId);
-      }
-
-      // 💥 ГЛАВНОЕ: Комната теперь уникальна для каждого чата!
-      const roomName = `chat_${currentChatId}`;
-      socket.join(roomName);
-      console.log(`Пользователь зашел в 1-на-1 комнату: ${roomName}`);
-
-      const history = await getChatMessages(currentChatId);
-      console.log(history);
-
-      // Отправляем историю И возвращаем актуальный chatId на фронт
-      socket.emit("chat_history", { history, chatId: currentChatId });
-    } catch (error) {
-      console.error("Ошибка при входе в чат:", error);
-    }
-  });
-
-  // Клиент отправляет сообщение
-  socket.on("send_message", async (data) => {
-    // 🔥 Теперь фронт обязан присылать точный chatId
-    const { chatId, senderId, text, senderName, senderSurname } = data;
-
-    try {
-      const savedMsg = await saveChatMessage(chatId, senderId, text);
-
-      const messageToBroadcast = {
-        id: savedMsg.id,
-        message: savedMsg.message,
-        sent_at: savedMsg.sent_at,
-        sender_id: savedMsg.sender_id,
-        sender_name: senderName,
-        sender_surname: senderSurname,
-      };
-
-      // 💥 Рассылаем сообщение ТОЛЬКО в эту уникальную комнату
-      const roomName = `chat_${chatId}`;
-      io.to(roomName).emit("receive_message", messageToBroadcast);
-
-      // И дергаем обновление списка чатов (как мы делали в прошлом шаге)
-      io.emit("chats_updated");
-    } catch (error) {
-      console.error("Ошибка при сохранении сообщения:", error);
-    }
-  });
-
-  socket.on("request_chats", async ({ userId }) => {
-    try {
-      // Здесь делаешь запрос в БД, который раньше был в роуте GET /chat/chats
-      const chats = await getUserChatList(userId);
-
-      // Отправляем список обратно ИМЕННО этому юзеру
-      socket.emit("receive_chats", chats);
-    } catch (error) {
-      console.error(error);
-    }
-  });
-
-  socket.on("disconnect", () => {
-    console.log("Пользователь отключился:", socket.id);
-  });
-});
-// ==========================================================
-
-// Запуск сервера
-server.listen(port, "0.0.0.0");
-server.on("listening", onListening);
-server.on("error", onError);
-
+/**
+ * Pomocné funkce pro správu portů a chyb.
+ */
 function normalizePort(val) {
   const port = parseInt(val, 10);
   if (isNaN(port)) return val;
@@ -143,3 +47,103 @@ function onListening() {
   const bind = typeof addr === "string" ? "pipe " + addr : "port " + addr.port;
   debug("Listening on " + bind);
 }
+
+const debug = debugLib("web-platform:server");
+const port = normalizePort(process.env.PORT || "5000");
+app.set("port", port);
+
+/**
+ * Vytvoření HTTP serveru.
+ */
+const server = http.createServer(app);
+
+/**
+ * KONFIGURACE WEB SOCKETS (Real-time komunikace)
+ */
+const io = new Server(server, {
+  cors: {
+    origin: [
+      "http://localhost:5173",
+      "http://192.168.0.101:5173",
+      "https://192.168.0.101:5173",
+    ],
+    credentials: true,
+  },
+});
+
+io.on("connection", (socket) => {
+  console.log("⚡ Uživatel připojen k WebSocketu! ID:", socket.id);
+
+  /**
+   * Událost: Připojení do konkrétního chatu.
+   * Zajišťuje vytvoření místnosti (room) pro oddělenou komunikaci.
+   */
+  socket.on("join_chat", async ({ orderId, chatId, userId }) => {
+    try {
+      let currentChatId = chatId;
+
+      if (!currentChatId) {
+        currentChatId = await getOrCreateChat(orderId, userId);
+      }
+      const roomName = `chat_${currentChatId}`;
+      socket.join(roomName);
+
+      const history = await getChatMessages(currentChatId);
+
+      socket.emit("chat_history", { history, chatId: currentChatId });
+    } catch (error) {
+      console.error("Chyba při vstupu do chatu:", error);
+    }
+  });
+
+  /**
+   * Událost: Odeslání zprávy.
+   * Uloží zprávu do DB a v reálném čase ji přepne ostatním v místnosti.
+   */
+  socket.on("send_message", async (data) => {
+    const { chatId, senderId, text, senderName, senderSurname } = data;
+
+    try {
+      const savedMsg = await saveChatMessage(chatId, senderId, text);
+
+      const messageToBroadcast = {
+        id: savedMsg.id,
+        message: savedMsg.message,
+        sent_at: savedMsg.sent_at,
+        sender_id: savedMsg.sender_id,
+        sender_name: senderName,
+        sender_surname: senderSurname,
+      };
+
+      const roomName = `chat_${chatId}`;
+      io.to(roomName).emit("receive_message", messageToBroadcast);
+
+      io.emit("chats_updated");
+    } catch (error) {
+      console.error("Chyba při ukládání zprávy:", error);
+    }
+  });
+
+  /**
+   * Událost: Vyžádání seznamu chatů uživatele.
+   */
+  socket.on("request_chats", async ({ userId }) => {
+    try {
+      const chats = await getUserChatList(userId);
+      socket.emit("receive_chats", chats);
+    } catch (error) {
+      console.error(error);
+    }
+  });
+
+  socket.on("disconnect", () => {
+    console.log("Uživatel se odpojil:", socket.id);
+  });
+});
+
+/**
+ * SPUŠTĚNÍ SERVERU
+ */
+server.listen(port, "0.0.0.0");
+server.on("listening", onListening);
+server.on("error", onError);

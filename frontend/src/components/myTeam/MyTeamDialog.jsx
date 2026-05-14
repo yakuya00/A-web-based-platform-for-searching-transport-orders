@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -21,8 +21,19 @@ import { Label } from '@/components/ui/label';
 import { UserPlus } from 'lucide-react';
 import { useMyTeamDialog } from '@/hooks/useMyTeamDialog';
 
+/**
+ * Dialogové okno pro registraci nového zaměstnance do firemního týmu.
+ * @param {Object} props
+ * @param {Function} props.onSuccess - Callback volaný po úspěšném vytvoření uživatele pro refresh seznamu.
+ * @todo (UX) Implementovat validaci hesel (minimální délka, speciální znaky).
+ * @todo (Feature) Přidat možnost nahrát profilovou fotografii zaměstnance.
+ */
 const MyTeamDialog = ({ onSuccess }) => {
+  /** * Hook obsluhující stav formuláře, odesílání dat a interakci s API.
+   * @see hooks/useMyTeamDialog
+   */
   const { data, actions } = useMyTeamDialog(onSuccess);
+
   return (
     <Dialog open={data.isDialogOpen} onOpenChange={data.setIsDialogOpen}>
       <DialogTrigger asChild>
@@ -39,7 +50,6 @@ const MyTeamDialog = ({ onSuccess }) => {
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
-          {/* Выбор роли */}
           <div className="grid gap-2">
             <Label htmlFor="role">Role v systému</Label>
             <Select
@@ -52,23 +62,23 @@ const MyTeamDialog = ({ onSuccess }) => {
                 <SelectValue placeholder="Vyberte roli" />
               </SelectTrigger>
               <SelectContent>
-                {data.roles.map((role) => (
-                  <SelectItem key={role.id} value={role.id}>
-                    {/* Красиво переводим системные имена на чешский */}
-                    {role.name === 'admin'
-                      ? 'Majitel / Admin'
-                      : role.name === 'manager'
-                        ? 'Dispečer'
-                        : role.name === 'driver'
-                          ? 'Řidič'
-                          : role.name}
-                  </SelectItem>
-                ))}
+                {data.roles.map((role) => {
+                  return (
+                    <SelectItem key={role.id} value={role.id}>
+                      {role.name === 'Admin'
+                        ? 'Majitel / Admin'
+                        : role.name === 'Manager'
+                          ? 'Dispečer'
+                          : role.name === 'Driver'
+                            ? 'Řidič'
+                            : role.name}
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           </div>
 
-          {/* Имя и Фамилия */}
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label htmlFor="name">Jméno</Label>
@@ -90,7 +100,6 @@ const MyTeamDialog = ({ onSuccess }) => {
             </div>
           </div>
 
-          {/* Телефон (обязателен для всех) */}
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label htmlFor="phone">Telefon</Label>
@@ -108,7 +117,6 @@ const MyTeamDialog = ({ onSuccess }) => {
                 type="date"
                 value={data.formData.birthday}
                 onChange={actions.handleChange}
-                // 🔥 UX-фишка: запрещаем выбирать дату из будущего
                 max={new Date().toISOString().split('T')[0]}
               />
             </div>

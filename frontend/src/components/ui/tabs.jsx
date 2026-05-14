@@ -52,13 +52,10 @@ function TabsTrigger({ className, ...props }) {
   return (
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
-      // Убрали кривой size="default", он не нужен в HTML-теге
       className={cn(
-        // 1. БАЗА ОТ КНОПОК (чтобы размер, шрифт и отклики на клик были 1 в 1):
         'inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-semibold transition-all focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 active:scale-95 gap-2',
-        'h-11 px-6 py-2', // Это размеры из size="default"
+        'h-11 px-6 py-2',
 
-        // 2. ЦВЕТА И СОСТОЯНИЯ (заменили data-[active=true] на data-[state=active]!):
         'text-gray-600 hover:text-gray-900 hover:bg-gray-100 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:hover:bg-blue-100 data-[state=active]:shadow-sm',
 
         className

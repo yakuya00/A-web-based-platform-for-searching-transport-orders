@@ -1,18 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import {
-  Building2,
-  Wallet,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  Star,
-} from 'lucide-react';
+import { Wallet, Clock, CheckCircle2, XCircle, Star } from 'lucide-react';
 import { useOrderOffersList } from '@/hooks/useOrderOffersList';
 
+/**
+ * Seznam nabídek od dopravců pro konkrétní zakázku.
+ * @param {Object} props
+ * @param {number} props.orderId - ID zakázky, pro kterou se nabídky zobrazují.
+ * @param {Function} props.onAccept - Callback po úspěšné akci (např. zavření dialogu nebo refresh dat).
+ */
 const OrderOffersList = ({ orderId, onAccept }) => {
+  /** * Hook pro správu dat a operací s nabídkami.
+   * @see hooks/useOrderOffersList
+   */
   const { data, actions } = useOrderOffersList(orderId, onAccept);
 
   if (data.isLoading) {
@@ -46,10 +48,7 @@ const OrderOffersList = ({ orderId, onAccept }) => {
 
       <div className="grid gap-2">
         {' '}
-        {/* 🔥 Уменьшили отступ между карточками (gap-2) */}
         {data.offers.map((offer, index) => {
-          const isBestPrice = index === 0 && offer.offer_status === 'pending';
-
           return (
             <Card
               key={offer.offer_id}
@@ -59,12 +58,9 @@ const OrderOffersList = ({ orderId, onAccept }) => {
                   : 'hover:shadow-sm'
               }`}
             >
-              {/* 🔥 Уменьшили падинги (p-3) */}
               <CardContent className="p-3">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                  {/* ИНФА О КОМПАНИИ */}
                   <div className="flex items-center gap-3 flex-1 w-full">
-                    {/* 🔥 Уменьшили аватарку (w-8 h-8, text-sm) */}
                     <div
                       className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
                         offer.offer_status === 'rejected'
@@ -75,7 +71,6 @@ const OrderOffersList = ({ orderId, onAccept }) => {
                       {offer.company_name.charAt(0)}
                     </div>
                     <div>
-                      {/* 🔥 Уменьшили шрифт заголовка (text-base) */}
                       <h4 className="font-bold text-base text-gray-900 flex items-center gap-2 leading-none">
                         {offer.company_name}
                       </h4>
@@ -99,9 +94,7 @@ const OrderOffersList = ({ orderId, onAccept }) => {
                     </div>
                   </div>
 
-                  {/* ЦЕНА И КНОПКИ */}
                   <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto gap-2 mt-2 sm:mt-0">
-                    {/* 🔥 Уменьшили цену (text-lg) */}
                     <div className="text-lg font-black text-gray-900 leading-none">
                       {offer.proposed_price.toLocaleString('cs-CZ')}{' '}
                       <span className="text-xs text-gray-500 font-bold">
@@ -111,17 +104,17 @@ const OrderOffersList = ({ orderId, onAccept }) => {
 
                     {offer.offer_status === 'pending' ? (
                       <div className="flex gap-1.5">
-                        {/* 🔥 Уменьшили кнопки (size="sm", h-8) */}
                         <Button
                           size="sm"
                           className="h-8 bg-green-600 hover:bg-green-700 font-bold px-3 text-xs"
                           disabled={data.isProcessing}
-                          onClick={() =>
+                          onClick={() => {
                             actions.handleAcceptOffer(
                               offer.offer_id,
                               offer.company_name
-                            )
-                          }
+                            );
+                            onAccept();
+                          }}
                         >
                           <CheckCircle2 className="w-3 h-3 mr-1" />
                           Přijmout
@@ -131,9 +124,10 @@ const OrderOffersList = ({ orderId, onAccept }) => {
                           variant="outline"
                           className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 border-gray-200"
                           disabled={data.isProcessing}
-                          onClick={() =>
-                            actions.handleRejectOffer(offer.offer_id)
-                          }
+                          onClick={() => {
+                            actions.handleRejectOffer(offer.offer_id);
+                            onAccept();
+                          }}
                         >
                           <XCircle className="w-3.5 h-3.5" />
                         </Button>

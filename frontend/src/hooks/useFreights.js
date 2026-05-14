@@ -2,6 +2,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import $api from '@/api/axiosInstance';
 import { useNominatim } from '@/hooks/useNominatim';
 
+/**
+ * Hook pro vyhledávání, filtrování a stránkování nákladů na burze.
+ */
 export const useFreights = () => {
   const fromLocation = useNominatim();
   const toLocation = useNominatim();
@@ -20,14 +23,13 @@ export const useFreights = () => {
     isLoadingRef.current = isLoading;
   }, [isLoading]);
 
-  // Наблюдатель за бесконечным скроллом
+  // --- NEKONEČNÉ SCROLLOVÁNÍ (Infinite Scroll) ---
   const observer = useRef(null);
   const lastFreightElementRef = useCallback(
     (node) => {
       if (observer.current) observer.current.disconnect();
       observer.current = new IntersectionObserver((entries) => {
         if (entries[0].isIntersecting && hasMore && !isLoadingRef.current) {
-          console.log('🔥 ДОКРУТИЛИ ДО КОНЦА! Грузим страницу:', page + 1);
           setPage((prevPage) => prevPage + 1);
         }
       });
@@ -36,14 +38,28 @@ export const useFreights = () => {
     [hasMore]
   );
 
+  // --- API VOLÁNÍ ---
   const fetchFreights = async (pageNum, isNewSearch = false) => {
     setIsLoading(true);
     try {
       const params = {
-        fromLat: fromLocation.selectedItem?.lat || undefined,
-        fromLon: fromLocation.selectedItem?.lon || undefined,
-        toLan: toLocation.selectedItem?.lat || undefined,
-        toLon: toLocation.selectedItem?.lon || undefined,
+        fromLat:
+          fromLocation.isSelected && fromLocation.query
+            ? fromLocation.selectedItem?.lat
+            : undefined,
+        fromLon:
+          fromLocation.isSelected && fromLocation.query
+            ? fromLocation.selectedItem?.lon
+            : undefined,
+
+        toLat:
+          toLocation.isSelected && toLocation.query
+            ? toLocation.selectedItem?.lat
+            : undefined,
+        toLon:
+          toLocation.isSelected && toLocation.query
+            ? toLocation.selectedItem?.lon
+            : undefined,
         type: cargoType !== '' ? cargoType : undefined,
         minWeight: fromWeight || undefined,
         maxWeight: toWeight || undefined,
@@ -66,25 +82,22 @@ export const useFreights = () => {
     }
   };
 
+  // --- HANDLERY ---
   const handleSearch = () => {
-    console.log('🔥 КНОПКА НАЖАТА!');
     setPage(1);
     fetchFreights(1, true);
   };
 
-  // Первичная загрузка
   useEffect(() => {
     fetchFreights(1, true);
   }, []);
 
-  // Подгрузка при смене страницы
   useEffect(() => {
     if (page > 1) {
       fetchFreights(page, false);
     }
   }, [page]);
 
-  // Возвращаем аккуратно упакованные данные
   return {
     filters: {
       fromLocation,

@@ -1,5 +1,14 @@
-import React, { Dispatch, SetStateAction } from 'react';
+import React from 'react';
 
+/**
+ * Interaktivní tabulka pro zobrazení dostupných přepravních zakázek (Burza nákladů).
+ * * @todo (Refactor) Převést nativní <table> na Shadcn UI Table komponenty.
+ * @param {Object} props
+ * @param {Array} props.freights - Seznam objektů nákladů načtených z API.
+ * @param {Function} props.handleFreight - Callback pro otevření detailu nákladu nebo nabídkového dialogu.
+ * @param {React.Ref} props.lastFreightElementRef - Reference na poslední prvek pro Intersection Observer (Infinite Scroll).
+ * @returns {JSX.Element}
+ */
 const FreightsTable = ({ freights, handleFreight, lastFreightElementRef }) => {
   return (
     <div className="bg-white border border-gray-200 rounded-xl shadow-sm flex-1 overflow-hidden flex flex-col">
@@ -26,7 +35,6 @@ const FreightsTable = ({ freights, handleFreight, lastFreightElementRef }) => {
                   ref={isLastElement ? lastFreightElementRef : null}
                   className="hover:bg-blue-50/50 transition-colors group cursor-pointer"
                   onClick={() => {
-                    console.log('🔥 КЛИКНУЛИ НА ГРУЗ:', freight);
                     handleFreight(freight);
                   }}
                 >

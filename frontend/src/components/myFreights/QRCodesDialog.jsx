@@ -5,10 +5,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { QRCodeSVG } from 'qrcode.react'; // 🔥 Та самая библиотека
+import { QRCodeSVG } from 'qrcode.react';
 import { QrCode, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import $api from '@/api/axiosInstance';
 
+/**
+ * Dialogové okno pro zobrazení verifikačních QR kódů zakázky.
+ * Zobrazuje dva unikátní QR kódy vygenerované na backendu:
+ * 1. Pickup (Nakládka) - Řidič jej naskenuje a potvrdí převzetí.
+ * 2. Delivery (Vykládka) - Řidič jej naskenuje a potvrdí doručení.
+ * @param {Object} props
+ * @param {boolean} props.isOpen - Stav otevření modálního okna.
+ * @param {Function} props.onClose - Funkce pro zavření dialogu.
+ * @param {number|string} props.orderId - ID zakázky, pro kterou se kódy generují.
+ */
 const QRCodesDialog = ({ isOpen, onClose, orderId }) => {
   const [qrData, setQrData] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -32,7 +42,6 @@ const QRCodesDialog = ({ isOpen, onClose, orderId }) => {
     }
   }, [isOpen, orderId]);
 
-  // Хелпер, чтобы найти нужный токен из массива
   const getTokenByType = (type) =>
     qrData.find((qr) => qr.type === type)?.qr_token;
 
@@ -57,7 +66,6 @@ const QRCodesDialog = ({ isOpen, onClose, orderId }) => {
             </div>
           ) : (
             <div className="flex flex-col md:flex-row gap-8 justify-center items-center">
-              {/* Код для Погрузки */}
               <div className="flex flex-col items-center bg-gray-50 p-6 rounded-xl border border-gray-200">
                 <div className="flex items-center gap-2 mb-4 text-blue-700 font-semibold">
                   <ArrowUpRight className="w-5 h-5" />
@@ -67,7 +75,7 @@ const QRCodesDialog = ({ isOpen, onClose, orderId }) => {
                   <QRCodeSVG
                     value={getTokenByType('pickup') || 'error'}
                     size={160}
-                    level="H" // Высокий уровень коррекции ошибок
+                    level="H"
                   />
                 </div>
                 <p className="text-xs text-gray-500 mt-4 text-center w-40">
@@ -75,7 +83,6 @@ const QRCodesDialog = ({ isOpen, onClose, orderId }) => {
                 </p>
               </div>
 
-              {/* Код для Выгрузки */}
               <div className="flex flex-col items-center bg-gray-50 p-6 rounded-xl border border-gray-200">
                 <div className="flex items-center gap-2 mb-4 text-green-700 font-semibold">
                   <ArrowDownRight className="w-5 h-5" />

@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 
+/**
+ * Hook pro našeptávač adres (Geocoding) využívající OpenStreetMap Nominatim API.
+ */
 export const useNominatim = () => {
   const [query, setQuery] = useState('');
   const [fullQuery, setFullQuery] = useState('');
@@ -22,17 +25,15 @@ export const useNominatim = () => {
         );
         const data = await res.json();
         const cleanResults = data.filter((item) => {
-          // Список разрешенных категорий (class). Всё остальное пойдет лесом.
           const allowedClasses = [
-            'place', // Города, деревни, районы
-            'boundary', // Административные границы (страны, области)
-            'highway', // Улицы, дороги
-            'building', // Конкретные здания (адреса)
-            'amenity', // Инфраструктура (заправки, парковки, склады)
-            'office', // Офисные здания
+            'place',
+            'boundary',
+            'highway',
+            'building',
+            'amenity',
+            'office',
           ];
 
-          // Список запрещенных типов (даже если class совпал, рубим это)
           const bannedTypes = [
             'sea',
             'ocean',
@@ -49,7 +50,7 @@ export const useNominatim = () => {
         });
         setItems(cleanResults.slice(0, 5));
       } catch (error) {
-        console.error('Ошибка Nominatim:', error);
+        console.error('Chyba Nominatim:', error);
       } finally {
         setIsLoading(false);
       }
@@ -59,7 +60,6 @@ export const useNominatim = () => {
   }, [query, isSelected]);
 
   const selectItem = (item) => {
-    // Оставляем только Город и Страну (чтобы не пихать весь длинный адрес)
     const city =
       item.address.city ||
       item.address.town ||
@@ -76,11 +76,16 @@ export const useNominatim = () => {
     setIsSelected(true);
   };
 
-  // Если юзер начал стирать выбранный город, сбрасываем статус "Выбрано"
   const handleInputChange = (e) => {
     setQuery(e.target.value);
     setFullQuery(e.target.value);
-    if (isSelected) setIsSelected(false);
+    if (isSelected) {
+      setIsSelected(false);
+    }
+
+    if (value.trim() === '') {
+      setSelectedItem(null);
+    }
   };
 
   return {

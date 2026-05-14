@@ -1,20 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import $api from '@/api/axiosInstance';
 
+/**
+ * Hook pro správu seznamu došlých nabídek k vypsané zakázce.
+ * @param {number|string} orderId - ID zakázky, pro kterou nabídky načítáme.
+ * @param {Function} onAccept - Callback volaný po úspěšném přijetí nabídky (např. pro zavření modalu a refresh detailu).
+ * @todo (UX) Nahradit `window.confirm` za hezčí Shadcn <AlertDialog>.
+ * @todo (UX/Notifications) Přidat integraci s Toast notifikacemi (např. "Nabídka od firmy XY byla přijata").
+ */
 export const useOrderOffersList = (orderId, onAccept) => {
   const [offers, setOffers] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false); // Для загрузки при нажатии кнопок
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const fetchOffers = async () => {
     setIsLoading(true);
     try {
       const res = await $api.get(`order/${orderId}/offer`);
       const newData = res.data;
-      console.log(newData);
       setOffers(newData);
     } catch (error) {
-      console.log('Chyba: ', error);
+      console.error(error);
     } finally {
       setIsLoading(false);
     }
@@ -30,7 +36,7 @@ export const useOrderOffersList = (orderId, onAccept) => {
       try {
         await $api.post(`order/offer/${offerId}/accept`);
       } catch (error) {
-        console.log('Chyba: ', error);
+        console.error(error);
       } finally {
         setIsProcessing(false);
         onAccept();
@@ -41,7 +47,6 @@ export const useOrderOffersList = (orderId, onAccept) => {
   const handleRejectOffer = async (offerId) => {
     setIsProcessing(true);
     console.log(`Zamítám nabídku ID: ${offerId}`);
-    // TODO: Запрос на бэкенд
     setTimeout(() => {
       setIsProcessing(false);
     }, 500);

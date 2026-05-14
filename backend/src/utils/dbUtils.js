@@ -1,7 +1,19 @@
+/**
+ * Databázové utility pro správu transakcí a geografických dat (PostGIS).
+ * @module utils/dbUtils
+ */
+
 import pool from "../config/db.js";
 
 const getClient = (client) => client || pool;
 
+/**
+ * Spustí callback funkci v rámci izolované SQL transakce (ACID).
+ * @function runTransaction
+ * @param {Function} callback - Asynchronní funkce přijímající transakčního klienta.
+ * @returns {Promise<any>} Výsledek callbacku.
+ * @throws {Error} Pokud transakce selže, provede se ROLLBACK.
+ */
 export const runTransaction = async (callback) => {
   const client = await pool.connect();
 
@@ -18,6 +30,13 @@ export const runTransaction = async (callback) => {
   }
 };
 
+/**
+ * Normalizuje data z OpenStreetMap (Nominatim) a uloží/aktualizuje lokaci v databázi.
+ * Využívá PostGIS pro práci s geografickými body.
+ * @function insertLocation
+ * @param {Object} nominatium_data - Objekt s daty o adrese z Nominatim API.
+ * @returns {Promise<number>} ID uložené lokace v tabulce locates.
+ */
 export const insertLocation = async (nominatium_data, client = null) => {
   const db = getClient(client);
 
@@ -43,115 +62,6 @@ export const insertLocation = async (nominatium_data, client = null) => {
   const countryCode = country_code.toUpperCase();
   const cityName = city || town || village || null;
   const shortOsmType = osm_type.charAt(0).toUpperCase();
-
-  //   const {
-  //     rows: [existing],
-  //   } = await db.query(
-  //     `SELECT id
-  //         FROM locates
-  //         WHERE external_place_id = $1`,
-  //     [place_id],
-  //   );
-
-  //   if (existing) {
-  //     return existing.id;
-  //   }
-
-  //   let {
-  //     rows: [countryRow],
-  //   } = await db.query(
-  //     `SELECT id
-  //         FROM countries
-  //         WHERE iso_code = $1`,
-  //     [countryCode],
-  //   );
-
-  //   if (!countryRow) {
-  //     ({
-  //       rows: [countryRow],
-  //     } = await db.query(
-  //       `INSERT INTO countries
-  //             (iso_code, name)
-  //             VALUES ($1, $2)
-  //             RETURNING *`,
-  //       [countryCode, country],
-  //     ));
-  //   }
-
-  //   let cityRow = null;
-  //   if (cityName) {
-  //     ({
-  //       rows: [cityRow],
-  //     } = await db.query(
-  //       `SELECT id
-  //             FROM cities
-  //             WHERE country_id = $1
-  //             AND LOWER(name) = LOWER($2)`,
-  //       [countryRow.id, cityName],
-  //     ));
-
-  //     if (!cityRow) {
-  //       ({
-  //         rows: [cityRow],
-  //       } = await db.query(
-  //         `INSERT INTO cities
-  //                 (country_id, name)
-  //                 VALUES ($1, $2)
-  //                 RETURNING *`,
-  //         [countryRow.id, cityName],
-  //       ));
-  //     }
-  //   }
-
-  //   let postalCodeRow = null;
-  //   if (postcode) {
-  //     ({
-  //       rows: [postalCodeRow],
-  //     } = await db.query(
-  //       `SELECT id
-  //             FROM postcodes
-  //             WHERE city_id = $1
-  //             AND postcode = $2`,
-  //       [cityRow.id, postcode],
-  //     ));
-
-  //     if (!postalCodeRow) {
-  //       ({
-  //         rows: [postalCodeRow],
-  //       } = await db.query(
-  //         `INSERT INTO postcodes
-  //                 (city_id, postcode)
-  //                 VALUES ($1, $2)
-  //                 RETURNING *`,
-  //         [cityRow.id, postcode],
-  //       ));
-  //     }
-  //   }
-  //   console.log(cityRow);
-  //   console.log(postalCodeRow);
-
-  //   const {
-  //     rows: [loc],
-  //   } = await db.query(
-  //     `INSERT INTO locates
-  //          (country_id, city_id, postcode_id, external_place_id, street, house_number, display_name, geo_point)
-  //          VALUES ($1, $2, $3, $4, $5, $6, $7, ST_SetSRID(ST_MakePoint($8, $9), 4326))
-  //          RETURNING *`,
-  //     [
-  //       countryRow.id,
-  //       cityRow ? cityRow.id : null,
-  //       postalCodeRow ? postalCodeRow.id : null,
-  //       place_id,
-  //       road || null,
-  //       house_number || null,
-  //       display_name,
-  //       lon, // X
-  //       lat, // Y
-  //     ],
-  //   );
-
-  //   return loc.id;
-  console.log("1");
   let {
     rows: [countryRow],
   } = await db.query(
@@ -161,9 +71,6 @@ export const insertLocation = async (nominatium_data, client = null) => {
          RETURNING id`,
     [countryCode, country],
   );
-  console.log("2");
-
-  // 2. Обработка города
   let cityRow = null;
   if (cityName) {
     ({
@@ -176,9 +83,7 @@ export const insertLocation = async (nominatium_data, client = null) => {
       [countryRow.id, cityName],
     ));
   }
-  console.log("3");
 
-  // 3. Обработка индекса
   let postalCodeRow = null;
   if (postcode && cityRow) {
     ({
@@ -191,9 +96,7 @@ export const insertLocation = async (nominatium_data, client = null) => {
       [cityRow.id, postcode],
     ));
   }
-  console.log("4");
 
-  // 4. ГЛАВНЫЙ INSERT (с защитой от дублей по OSM)
   const {
     rows: [loc],
   } = await db.query(
@@ -218,7 +121,6 @@ export const insertLocation = async (nominatium_data, client = null) => {
       lat,
     ],
   );
-  console.log("4");
 
   return loc.id;
 };

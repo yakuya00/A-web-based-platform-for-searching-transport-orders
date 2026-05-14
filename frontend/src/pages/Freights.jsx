@@ -6,10 +6,12 @@ import FreightsTable from '@/components/freights/FreightsTable';
 import FreightsFilters from '@/components/freights/FreightsFilters';
 import { useFreights } from '@/hooks/useFreights';
 
+/**
+ * Hlavní modul burzy nákladů (Marketplace).
+ */
 const Freights = () => {
   const { filters, data, actions } = useFreights();
 
-  // Стейты только для интерфейса (UI)
   const [selectedFreight, setSelectedFreight] = useState(null);
   const [viewModel, setViewModel] = useState('list');
 
@@ -20,7 +22,6 @@ const Freights = () => {
         viewModel={viewModel}
         setViewModel={setViewModel}
       />
-      {/* ПАНЕЛЬ ФИЛЬТРОВ (Выполняем требования диплома) */}
       <FreightsFilters
         filters={filters}
         isLoading={data.isLoading}
@@ -42,8 +43,8 @@ const Freights = () => {
         </div>
       )}
       <FreightDrawer
-        isOpen={!!selectedFreight} // Если в selectedFreight что-то есть, передаст true
-        onClose={() => setSelectedFreight(null)} // При закрытии очищаем стейт
+        isOpen={!!selectedFreight}
+        onClose={() => setSelectedFreight(null)}
         freightId={selectedFreight?.id}
       />
     </div>

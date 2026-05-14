@@ -2,6 +2,13 @@ import React from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { PERMISSIONS } from '@/config/permissions';
 
+/**
+ * Komponenta pro podmíněné vykreslování UI prvků na základě oprávnění (RBAC).
+ * @param {Object} props
+ * @param {string} [props.requireUserPermission] - Klíč oprávnění z PERMISSIONS (např. 'CAN_MANAGE_COMPANY').
+ * @param {string} [props.requireCompanyPermission] - Klíč oprávnění firmy (např. 'CAN_ADD_FREIGHT').
+ * @param {React.ReactNode} props.children - Obsah, který se vyrenderuje při úspěšné autorizaci.
+ */
 const RoleGuard = ({
   requireUserPermission,
   requireCompanyPermission,

@@ -17,8 +17,6 @@ const buttonVariants = cva(
         ghost: 'hover:bg-gray-100 hover:text-gray-900 text-gray-600',
         link: 'text-blue-600 underline-offset-4 hover:underline',
 
-        // 🔥 ТВОЙ ИДЕАЛЬНЫЙ ПЕРЕКЛЮЧАТЕЛЬ!
-        // По умолчанию он серый, но если есть data-active="true", он становится синим!
         tab: 'text-gray-600 hover:text-gray-900 hover:bg-gray-100 data-[active=true]:bg-blue-50 data-[active=true]:text-blue-700 data-[active=true]:hover:bg-blue-100 data-[active=true]:shadow-sm',
         role_selection:
           'flex flex-col items-center border-2 border-gray-100 bg-transparent hover:border-blue-600 hover:bg-blue-50 group',

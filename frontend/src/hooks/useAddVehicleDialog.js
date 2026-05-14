@@ -1,11 +1,19 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import $api from '@/api/axiosInstance';
 
+/**
+ * Hook pro správu stavu a logiky dialogu "Přidat vozidlo" (Tahač / Návěs).
+ * * Řeší:
+ * 1. Sběr technických parametrů vozidla (SPZ, rozměry, nosnost).
+ * 2. Transformaci datových typů (string -> float/int) před odesláním na API.
+ * 3. Základní validaci povinných polí.
+ * @param {Function} onSuccess - Callback volaný po úspěšném přidání vozidla (pro refresh tabulky).
+ * @todo (Refactor) Nahradit nativní 'alert'.
+ * @todo (Architecture) Sjednotit formulář s 'react-hook-form' a 'zod'.
+ */
 export const useAddVehicleDialog = (onSuccess) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-
-  // Стейт формы
   const [formData, setFormData] = useState({
     vehicle_type: 'truck',
     reg_number: '',

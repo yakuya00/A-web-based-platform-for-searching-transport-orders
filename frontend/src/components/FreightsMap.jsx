@@ -2,8 +2,6 @@ import React from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-
-// Чиним иконки Leaflet
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 
@@ -15,12 +13,20 @@ let DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
+/**
+ * Interaktivní mapový pohled na dostupné přepravy (Map View).
+ * * Zobrazuje markery na místech nakládky (Pickup locations) pro rychlou prostorovou orientaci.
+ * @param {Object} props
+ * @param {Array} props.freights - Seznam aktuálně vyfiltrovaných nákladů (musí obsahovat from_lat a from_lon).
+ * @param {Function} props.onMarkerClick - Callback pro otevření detailu nákladu (typicky otevírá FreightDrawer).
+ * @todo (Performance) Implementovat 'Marker Clustering' (např. pomocí react-leaflet-cluster). Pokud bude na mapě 500+ nákladů, čistý Leaflet se začne sekat.
+ * @todo (Refactor) Převést na Shadcn UI
+ */
 const FreightsMap = ({ freights, onMarkerClick }) => {
-  // Центр Европы по дефолту (Прага)
+  // Výchozí střed Evropy - ideální pro start pohledu
   const defaultCenter = [49.8, 15.5];
 
   return (
-    // z-0 нужен, чтобы карта не лезла поверх боковой панели и автокомплитов!
     <div className="w-full h-full relative z-0">
       <MapContainer
         center={defaultCenter}
@@ -33,7 +39,6 @@ const FreightsMap = ({ freights, onMarkerClick }) => {
         />
 
         {freights.map((freight) => {
-          // Если у груза нет координат погрузки — пропускаем его
           if (!freight.from_lat || !freight.from_lon) return null;
 
           return (

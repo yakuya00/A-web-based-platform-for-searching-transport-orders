@@ -1,3 +1,9 @@
+/**
+ * Controller pro správu hodnocení mezi účastníky přepravy.
+ * Obsahuje komplexní validaci obchodních pravidel pro zajištění integrity recenzí.
+ * @module modules/rating/rating.controller
+ */
+
 import asyncHandler from "express-async-handler";
 import createError from "http-errors";
 import {
@@ -8,11 +14,18 @@ import {
 } from "./rating.repository.js";
 import { ORDER_STATUSES } from "../../constants/index.js";
 
+/**
+ * Přidá hodnocení protistraně po dokončení objednávky.
+ * @param {import('express').Request} req - Body obsahuje order_id, to_company_id, score (0-5) a komentář.
+ * @param {import('express').Response} res - Potvrzení o úspěšném uložení.
+ * @throws {HttpError} 400 - Neplatné skóre, zakázka není dokončena nebo duplicitní hodnocení.
+ * @throws {HttpError} 403 - Uživatel není účastníkem dané zakázky.
+ * @throws {HttpError} 404 - Zakázka nenalezena.
+ */
 export const addRatingToCompany = asyncHandler(async (req, res, next) => {
   const { order_id, to_company_id, score, comment } = req.body;
   const fromUserId = req.user.id;
   const userCompanyId = req.user.company_id;
-  console.log(req.body);
 
   if (score < 0 || score > 5) {
     throw createError(400, "Rate must be between 0 and 5.");
@@ -26,8 +39,7 @@ export const addRatingToCompany = asyncHandler(async (req, res, next) => {
   if (order.status !== ORDER_STATUSES.COMPLETED) {
     throw createError(400, "Rating can only be given for completed orders");
   }
-  console.log(order);
-  // 5. Проверка: юзер участвует в заказе
+
   if (
     ![order.customer_company_id, order.carrier_company_id].includes(
       userCompanyId,
@@ -36,12 +48,10 @@ export const addRatingToCompany = asyncHandler(async (req, res, next) => {
     throw createError(403, "You are not associated with this order");
   }
 
-  // 6. Проверка: нельзя оценить свою компанию
   //   if (userCompanyId === to_company_id) {
   //     throw createError(400, "Rating own company not allowed");
   //   }
 
-  // 7. Проверка: toCompanyId действительно вторая сторона заказа
   if (
     ![order.customer_company_id, order.carrier_company_id].includes(
       to_company_id,
@@ -53,7 +63,6 @@ export const addRatingToCompany = asyncHandler(async (req, res, next) => {
     );
   }
 
-  // 8. Проверка: не оставляли ли уже отзыв
   const existing = await getRatingByCompanyIdAndOrderId(
     userCompanyId,
     order_id,

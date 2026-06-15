@@ -46,3 +46,6 @@ To maximize performance and maintain complete control over the execution plans, 
    ```bash
    git clone [https://github.com/yakuya00/A-web-based-platform-for-searching-transport-orders.git](https://github.com/yakuya00/A-web-based-platform-for-searching-transport-orders.git)
    cd A-web-based-platform-for-searching-transport-orders
+2. Setup backend environment variables (create a /backend/.env file)
+3. ```bash
+   docker-compose up --build

@@ -260,6 +260,8 @@ All test accounts use the password **`Password123@`**
 
 All protected endpoints require a JWT; data is exchanged as JSON.
 
+📦 **Postman Collection:** You can import [`docs/postman/logix-api.postman_collection.json`](docs/postman/logix-api.postman_collection.json) directly into Postman to test all endpoints locally.
+
 <details>
 <summary><b>Auth</b></summary>
 

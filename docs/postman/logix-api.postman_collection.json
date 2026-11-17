@@ -1,0 +1,753 @@
+{
+  "info": {
+    "_postman_id": "34bb1595-7992-435d-a79a-2e31b5586fb7",
+    "name": "Web-based platform",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "48024055",
+    "_collection_link": "https://go.postman.co/collection/48024055-34bb1595-7992-435d-a79a-2e31b5586fb7?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "register",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"name\": \"John\",\r\n  \"surname\": \"Doe\",\r\n  \"birthday\": \"1990-01-01\",\r\n  \"phone\": \"+123456789\",\r\n  \"email\": \"qwerty@gmail.com\",\r\n  \"password\": \"Password123!\",\r\n  \"company_id\": 5,\r\n  \"role_id\": 1\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:5000/auth/register",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "auth",
+            "register"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "login",
+      "request": {
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "password",
+              "value": "Password123!",
+              "type": "string"
+            },
+            {
+              "key": "username",
+              "value": "testuser@example.com",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"email\": \"qwerty@gmail.com\",\r\n  \"password\": \"qwerty\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:5000/auth/login",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "auth",
+            "login"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Register with my email",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"name\": \"John\",\r\n  \"surname\": \"Doe\",\r\n  \"birthday\": \"1990-01-01\",\r\n  \"phone\": \"+123456780\",\r\n  \"email\": \"qwerty@gmail.com\",\r\n  \"password\": \"Password123!\",\r\n  \"company_id\": 1,\r\n  \"role_id\": 1\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:5000/auth/register",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "auth",
+            "register"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Resend verification email",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"email\": \"qwerty@gmail.com\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:5000/auth/resend-verification-email",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "auth",
+            "resend-verification-email"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Forgot password",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"email\":\"qwerty@gmail.com\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:5000/auth/forgot-password",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "auth",
+            "forgot-password"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Reset password",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"token\": \"8dbc1f124d799a76d43649d844b4d5bbdd2b2998c27591e1505d6a995322afb5\",\r\n    \"password\": \"10Qwerty12+\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:5000/auth/reset-password",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "auth",
+            "reset-password"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "refreshtoken",
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true,
+        "disableCookies": false
+      },
+      "request": {
+        "auth": {
+          "type": "basic"
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "refreshToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibmFtZSI6IkpvaG4iLCJzdXJuYW1lIjoiRG9lIiwiYmlydGhkYXkiOiIxOTg5LTEyLTMxVDIzOjAwOjAwLjAwMFoiLCJwaG9uZSI6IisxMjM0NTY3ODkiLCJlbWFpbCI6InRlc3R1c2VyQGV4YW1wbGUuY29tIiwicGFzc3dvcmRfaGFzaCI6IiQyYiQxMCQ1NmhyYWxKMldZbjRYQzlsN2UyZzguMVFBWHRQcURxdlBOUC9HQkdmeklUTjJDYW83TTk2UyIsImlzX3ZlcmlmaWVkIjpmYWxzZSwiY29tcGFueV9pZCI6MSwicm9sZV9pZCI6MSwiY3JlYXRlZF9hdCI6IjIwMjUtMDktMDdUMTM6MTc6NDkuMzQ0WiIsImlhdCI6MTc1NzI1MTc0MywiZXhwIjoxNzU5ODQzNzQzfQ.0oi1tiIN1G5k-8jwepJOWa5tEWOUJKbptC2_x4HS3ic",
+            "type": "text",
+            "disabled": true
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": ""
+        },
+        "url": {
+          "raw": "http://localhost:5000/auth/refresh-token",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "auth",
+            "refresh-token"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "logout",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": ""
+        },
+        "url": {
+          "raw": "http://localhost:5000/auth/logout",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "auth",
+            "logout"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "user/me",
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true
+      },
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibmFtZSI6IkpvaG4iLCJzdXJuYW1lIjoiRG9lIiwiYmlydGhkYXkiOiIxOTg5LTEyLTMxVDIzOjAwOjAwLjAwMFoiLCJwaG9uZSI6IisxMjM0NTY3ODkiLCJlbWFpbCI6InRlc3R1c2VyQGV4YW1wbGUuY29tIiwicGFzc3dvcmRfaGFzaCI6IiQyYiQxMCQ1NmhyYWxKMldZbjRYQzlsN2UyZzguMVFBWHRQcURxdlBOUC9HQkdmeklUTjJDYW83TTk2UyIsImlzX3ZlcmlmaWVkIjpmYWxzZSwiY29tcGFueV9pZCI6MSwicm9sZV9pZCI6MSwiY3JlYXRlZF9hdCI6IjIwMjUtMDktMDdUMTM6MTc6NDkuMzQ0WiIsImlhdCI6MTc1NzMzMDMxMywiZXhwIjoxNzU3MzMzOTEzfQ.zgR4kX5XoJ1DoxF0yAldoJJvsNWOur61eT1j8e5bQfs",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"email\": \"testuser@example.com\",\r\n  \"password\": \"Password123!\"\r\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/user/me",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "user",
+            "me"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "user/:id",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibmFtZSI6IkpvaG4iLCJzdXJuYW1lIjoiRG9lIiwiYmlydGhkYXkiOiIxOTg5LTEyLTMxVDIzOjAwOjAwLjAwMFoiLCJwaG9uZSI6IisxMjM0NTY3ODkiLCJlbWFpbCI6InRlc3R1c2VyQGV4YW1wbGUuY29tIiwicGFzc3dvcmRfaGFzaCI6IiQyYiQxMCQ1NmhyYWxKMldZbjRYQzlsN2UyZzguMVFBWHRQcURxdlBOUC9HQkdmeklUTjJDYW83TTk2UyIsImlzX3ZlcmlmaWVkIjpmYWxzZSwiY29tcGFueV9pZCI6MSwicm9sZV9pZCI6MSwiY3JlYXRlZF9hdCI6IjIwMjUtMDktMDdUMTM6MTc6NDkuMzQ0WiIsImlhdCI6MTc1NzMzMDMxMywiZXhwIjoxNzU3MzMzOTEzfQ.zgR4kX5XoJ1DoxF0yAldoJJvsNWOur61eT1j8e5bQfs",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:5000/user/2",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "user",
+            "2"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "/user/roles",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "",
+            "value": "",
+            "type": "text",
+            "disabled": true
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:5000/user/roles",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "user",
+            "roles"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "/company/create",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"name\": \"ABC Logistics\",\r\n  \"role_id\": 1,\r\n  \"identifiers\":[\r\n    {\r\n      \"identifier_type_id\": 1,\r\n      \"identifier_value\": \"CZ12345678\"\r\n    }],\r\n  \"addresses\":\r\n    [{\r\n      \"address_id\": 1,\r\n      \"address_type_id\": 1\r\n    }]\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:5000/company/create",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "company",
+            "create"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "company/roles",
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true
+      },
+      "request": {
+        "method": "GET",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"name\": \"ABC Logistics\",\r\n  \"role_id\": 1,\r\n  \"identifiers\":[\r\n    {\r\n      \"identifier_type_id\": 1,\r\n      \"identifier_value\": \"CZ12345678\"\r\n    }],\r\n  \"addresses\":\r\n    [{\r\n      \"address_id\": 1,\r\n      \"address_type_id\": 1\r\n    }]\r\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/company/roles",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "company",
+            "roles"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "/company/:id",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibmFtZSI6IkpvaG4iLCJzdXJuYW1lIjoiRG9lIiwiYmlydGhkYXkiOiIxOTg5LTEyLTMxVDIzOjAwOjAwLjAwMFoiLCJwaG9uZSI6IisxMjM0NTY3ODkiLCJlbWFpbCI6InRlc3R1c2VyQGV4YW1wbGUuY29tIiwicGFzc3dvcmRfaGFzaCI6IiQyYiQxMCQ1NmhyYWxKMldZbjRYQzlsN2UyZzguMVFBWHRQcURxdlBOUC9HQkdmeklUTjJDYW83TTk2UyIsImlzX3ZlcmlmaWVkIjpmYWxzZSwiY29tcGFueV9pZCI6MSwicm9sZV9pZCI6MSwiY3JlYXRlZF9hdCI6IjIwMjUtMDktMDdUMTM6MTc6NDkuMzQ0WiIsImlhdCI6MTc1NzQ5MzMzMywiZXhwIjoxNzU3NDk2OTMzfQ.42Bx0C6njcX14d9RUiZoLmsuBPssd-AaYbIdgfcxeTA",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:5000/company/1",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "company",
+            "1"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "/company (get All company users)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibmFtZSI6IkpvaG4iLCJzdXJuYW1lIjoiRG9lIiwiYmlydGhkYXkiOiIxOTg5LTEyLTMxVDIzOjAwOjAwLjAwMFoiLCJwaG9uZSI6IisxMjM0NTY3ODkiLCJlbWFpbCI6InRlc3R1c2VyQGV4YW1wbGUuY29tIiwicGFzc3dvcmRfaGFzaCI6IiQyYiQxMCQ1NmhyYWxKMldZbjRYQzlsN2UyZzguMVFBWHRQcURxdlBOUC9HQkdmeklUTjJDYW83TTk2UyIsImlzX3ZlcmlmaWVkIjpmYWxzZSwiY29tcGFueV9pZCI6MSwicm9sZV9pZCI6MSwiY3JlYXRlZF9hdCI6IjIwMjUtMDktMDdUMTM6MTc6NDkuMzQ0WiIsImlhdCI6MTc1NzU3NjQyNCwiZXhwIjoxNzU3NTgwMDI0fQ.3JyssrP-jHz3RKkz-zGwMAwEZJpzwQtODKJSz9xfBP8",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:5000/user",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "user"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "/vehicle",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibmFtZSI6IkpvaG4iLCJzdXJuYW1lIjoiRG9lIiwiYmlydGhkYXkiOiIxOTg5LTEyLTMxVDIzOjAwOjAwLjAwMFoiLCJwaG9uZSI6IisxMjM0NTY3ODkiLCJlbWFpbCI6InRlc3R1c2VyQGV4YW1wbGUuY29tIiwicGFzc3dvcmRfaGFzaCI6IiQyYiQxMCQ1NmhyYWxKMldZbjRYQzlsN2UyZzguMVFBWHRQcURxdlBOUC9HQkdmeklUTjJDYW83TTk2UyIsImlzX3ZlcmlmaWVkIjpmYWxzZSwiY29tcGFueV9pZCI6MSwicm9sZV9pZCI6MSwiY3JlYXRlZF9hdCI6IjIwMjUtMDktMDdUMTM6MTc6NDkuMzQ0WiIsImlhdCI6MTc1NzY2NjUxMiwiZXhwIjoxNzU3NjcwMTEyfQ.WtJmrq5DHtE8FN9qQ48Bmf33PLYkvdh5sR1gifoWjHQ",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"vehicle_type\": \"truck\",\r\n  \"reg_number\": \"1A2B3C4\",\r\n  \"brand\": \"Scania\",\r\n  \"model\": \"R 450\",\r\n  \"year_of_manufacture\": 2021,\r\n  \"length\": 12.50,\r\n  \"height\": 4.00,\r\n  \"capacity\": 20.00,\r\n  \"volume\": 60.00,\r\n  \"notes\": \"New engine, serviced 2023\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:5000/vehicle",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "vehicle"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "/vehicle",
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true
+      },
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibmFtZSI6IkpvaG4iLCJzdXJuYW1lIjoiRG9lIiwiYmlydGhkYXkiOiIxOTg5LTEyLTMxVDIzOjAwOjAwLjAwMFoiLCJwaG9uZSI6IisxMjM0NTY3ODkiLCJlbWFpbCI6InRlc3R1c2VyQGV4YW1wbGUuY29tIiwicGFzc3dvcmRfaGFzaCI6IiQyYiQxMCQ1NmhyYWxKMldZbjRYQzlsN2UyZzguMVFBWHRQcURxdlBOUC9HQkdmeklUTjJDYW83TTk2UyIsImlzX3ZlcmlmaWVkIjpmYWxzZSwiY29tcGFueV9pZCI6MSwicm9sZV9pZCI6MSwiY3JlYXRlZF9hdCI6IjIwMjUtMDktMDdUMTM6MTc6NDkuMzQ0WiIsImlhdCI6MTc1NzY2NjUxMiwiZXhwIjoxNzU3NjcwMTEyfQ.WtJmrq5DHtE8FN9qQ48Bmf33PLYkvdh5sR1gifoWjHQ",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": ""
+        },
+        "url": {
+          "raw": "http://localhost:5000/vehicle",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "vehicle"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "/vehicle/1",
+      "request": {
+        "method": "GET",
+        "header": []
+      },
+      "response": []
+    },
+    {
+      "name": "/vehicle/1 Copy",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibmFtZSI6IkpvaG4iLCJzdXJuYW1lIjoiRG9lIiwiYmlydGhkYXkiOiIxOTg5LTEyLTMxVDIzOjAwOjAwLjAwMFoiLCJwaG9uZSI6IisxMjM0NTY3ODkiLCJlbWFpbCI6InRlc3R1c2VyQGV4YW1wbGUuY29tIiwicGFzc3dvcmRfaGFzaCI6IiQyYiQxMCQ1NmhyYWxKMldZbjRYQzlsN2UyZzguMVFBWHRQcURxdlBOUC9HQkdmeklUTjJDYW83TTk2UyIsImlzX3ZlcmlmaWVkIjpmYWxzZSwiY29tcGFueV9pZCI6MSwicm9sZV9pZCI6MSwiY3JlYXRlZF9hdCI6IjIwMjUtMDktMDdUMTM6MTc6NDkuMzQ0WiIsImlhdCI6MTc1NzY2NjUxMiwiZXhwIjoxNzU3NjcwMTEyfQ.WtJmrq5DHtE8FN9qQ48Bmf33PLYkvdh5sR1gifoWjHQ",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:5000/vehicle/1",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "vehicle",
+            "1"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "/vehicle-composition",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibmFtZSI6IkpvaG4iLCJzdXJuYW1lIjoiRG9lIiwiYmlydGhkYXkiOiIxOTg5LTEyLTMxVDIzOjAwOjAwLjAwMFoiLCJwaG9uZSI6IisxMjM0NTY3ODkiLCJlbWFpbCI6InRlc3R1c2VyQGV4YW1wbGUuY29tIiwicGFzc3dvcmRfaGFzaCI6IiQyYiQxMCQ1NmhyYWxKMldZbjRYQzlsN2UyZzguMVFBWHRQcURxdlBOUC9HQkdmeklUTjJDYW83TTk2UyIsImlzX3ZlcmlmaWVkIjpmYWxzZSwiY29tcGFueV9pZCI6MSwicm9sZV9pZCI6MSwiY3JlYXRlZF9hdCI6IjIwMjUtMDktMDdUMTM6MTc6NDkuMzQ0WiIsImlhdCI6MTc1Nzc1MTg2MCwiZXhwIjoxNzU3NzU1NDYwfQ.R5Ofod3pLNXTiAr1-bWAy5MtdWnWszR9AFzBqq4YNJg",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"name\": \"Состав для рейса 123\",\r\n  \"description\": \"Доставка из Праги в Брно\",\r\n  \"truck_id\": 4,\r\n  \"trailers\": [\r\n    { \"trailer_id\": 2},\r\n    { \"trailer_id\": 3}\r\n  ]\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:5000/vehicle-composition",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "vehicle-composition"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "/vehicle-composition",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibmFtZSI6IkpvaG4iLCJzdXJuYW1lIjoiRG9lIiwiYmlydGhkYXkiOiIxOTg5LTEyLTMxVDIzOjAwOjAwLjAwMFoiLCJwaG9uZSI6IisxMjM0NTY3ODkiLCJlbWFpbCI6InRlc3R1c2VyQGV4YW1wbGUuY29tIiwicGFzc3dvcmRfaGFzaCI6IiQyYiQxMCQ1NmhyYWxKMldZbjRYQzlsN2UyZzguMVFBWHRQcURxdlBOUC9HQkdmeklUTjJDYW83TTk2UyIsImlzX3ZlcmlmaWVkIjpmYWxzZSwiY29tcGFueV9pZCI6MSwicm9sZV9pZCI6MSwiY3JlYXRlZF9hdCI6IjIwMjUtMDktMDdUMTM6MTc6NDkuMzQ0WiIsImlhdCI6MTc1Nzc1MTg2MCwiZXhwIjoxNzU3NzU1NDYwfQ.R5Ofod3pLNXTiAr1-bWAy5MtdWnWszR9AFzBqq4YNJg",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:5000/vehicle-composition",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "vehicle-composition"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "/vehicle-composition/:id",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibmFtZSI6IkpvaG4iLCJzdXJuYW1lIjoiRG9lIiwiYmlydGhkYXkiOiIxOTg5LTEyLTMxVDIzOjAwOjAwLjAwMFoiLCJwaG9uZSI6IisxMjM0NTY3ODkiLCJlbWFpbCI6InRlc3R1c2VyQGV4YW1wbGUuY29tIiwicGFzc3dvcmRfaGFzaCI6IiQyYiQxMCQ1NmhyYWxKMldZbjRYQzlsN2UyZzguMVFBWHRQcURxdlBOUC9HQkdmeklUTjJDYW83TTk2UyIsImlzX3ZlcmlmaWVkIjpmYWxzZSwiY29tcGFueV9pZCI6MSwicm9sZV9pZCI6MSwiY3JlYXRlZF9hdCI6IjIwMjUtMDktMDdUMTM6MTc6NDkuMzQ0WiIsImlhdCI6MTc1Nzc2NDE4OCwiZXhwIjoxNzYwMzU2MTg4fQ.AShcmH8sea217Z1QqlGP3_l8I6_2b-hippEYVsL46dk",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:5000/vehicle-composition/6",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "vehicle-composition",
+            "6"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "/order",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NCwibmFtZSI6IkpvaG4iLCJzdXJuYW1lIjoiRG9lIiwiYmlydGhkYXkiOiIxOTg5LTEyLTMxVDIzOjAwOjAwLjAwMFoiLCJwaG9uZSI6IisxMjM0NTY3ODkiLCJlbWFpbCI6InRlc3R1c2VyQGV4YW1wbGUuY29tIiwicGFzc3dvcmRfaGFzaCI6IiQyYiQxMCRPaU5Hd084aXZCZzFPYjhmQi9PQXhPd3BtVTRVU3FJUTNxaldDM2MzUlpJQVZldHU2alFDMiIsImlzX3ZlcmlmaWVkIjpmYWxzZSwiY29tcGFueV9pZCI6NSwicm9sZV9pZCI6MSwiY3JlYXRlZF9hdCI6IjIwMjUtMDktMTVUMTM6NTc6MzUuODg3WiIsImlhdCI6MTc1Nzk0NDY2OCwiZXhwIjoxNzYwNTM2NjY4fQ.OsgnunidpE2eyCkR33WZEsY4LU5XUlP1drAONCbvSGI",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"loading_address\": {\r\n    \"place_id\": 173022111,\r\n    \"licence\": \"Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright\",\r\n    \"osm_type\": \"node\",\r\n    \"osm_id\": 296749753,\r\n    \"lat\": \"49.5682814\",\r\n    \"lon\": \"17.2464013\",\r\n    \"class\": \"place\",\r\n    \"type\": \"house\",\r\n    \"place_rank\": 30,\r\n    \"importance\": 0.000069853513389746,\r\n    \"addresstype\": \"place\",\r\n    \"name\": \"\",\r\n    \"display_name\": \"424/9, Topolová, Slavonín, Оломоуц, okres Olomouc, Оломоуцкий край, Центральная Моравия, 783 01, Чехия\",\r\n    \"address\": {\r\n      \"house_number\": \"424/9\",\r\n      \"road\": \"Topolová\",\r\n      \"suburb\": \"Slavonín\",\r\n      \"city\": \"Оломоуц\",\r\n      \"municipality\": \"okres Olomouc\",\r\n      \"ISO3166-2-lvl7\": \"CZ-712\",\r\n      \"county\": \"Оломоуцкий край\",\r\n      \"ISO3166-2-lvl6\": \"CZ-71\",\r\n      \"state\": \"Центральная Моравия\",\r\n      \"postcode\": \"783 01\",\r\n      \"country\": \"Чехия\",\r\n      \"country_code\": \"cz\"\r\n    },\r\n    \"boundingbox\": [\r\n      \"49.5682314\",\r\n      \"49.5683314\",\r\n      \"17.2463513\",\r\n      \"17.2464513\"\r\n    ]\r\n  },\r\n  \"unloading_address\": {\r\n    \"place_id\": 122811867,\r\n    \"licence\": \"Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright\",\r\n    \"osm_type\": \"node\",\r\n    \"osm_id\": 2320029574,\r\n    \"lat\": \"50.2420493\",\r\n    \"lon\": \"15.0865117\",\r\n    \"class\": \"place\",\r\n    \"type\": \"house\",\r\n    \"place_rank\": 30,\r\n    \"importance\": 0.000062089723048707,\r\n    \"addresstype\": \"place\",\r\n    \"name\": \"\",\r\n    \"display_name\": \"147, K Nádraží, Oskořínek, okres Nymburk, Центральная Чехия, 289 32, Чехия\",\r\n    \"address\": {\r\n      \"house_number\": \"147\",\r\n      \"road\": \"K Nádraží\",\r\n      \"suburb\": \"Oskořínek\",\r\n      \"village\": \"Oskořínek\",\r\n      \"municipality\": \"okres Nymburk\",\r\n      \"ISO3166-2-lvl7\": \"CZ-208\",\r\n      \"state\": \"Центральная Чехия\",\r\n      \"ISO3166-2-lvl4\": \"CZ-20\",\r\n      \"postcode\": \"289 32\",\r\n      \"country\": \"Чехия\",\r\n      \"country_code\": \"cz\"\r\n    },\r\n    \"boundingbox\": [\r\n      \"50.2419993\",\r\n      \"50.2420993\",\r\n      \"15.0864617\",\r\n      \"15.0865617\"\r\n    ]\r\n  },\r\n  \"loading_date\": \"2025-09-20T10:00:00Z\",\r\n  \"unloading_date\": \"2025-09-22T15:00:00Z\",\r\n  \"length\": 12.5,\r\n  \"height\": 2.5,\r\n  \"weight\": 1500,\r\n  \"volume\": 30,\r\n  \"cargo_type\": \"General cargo\",\r\n  \"extra_info\": \"Handle with care\",\r\n  \"price\": 5000,\r\n  \"currency\": \"EUR\",\r\n  \"payment_term_days\": 30,\r\n  \"vehicle_requirements\": \"Truck with lift\",\r\n  \"external_comment\": \"Customer prefers delivery in the morning\",\r\n  \"internal_comment\": \"Assign to trusted carrier\",\r\n  \"contact_user_id\": 4\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:5000/order",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "order"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "/order/:id",
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true
+      },
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NCwibmFtZSI6IkpvaG4iLCJzdXJuYW1lIjoiRG9lIiwiYmlydGhkYXkiOiIxOTg5LTEyLTMxVDIzOjAwOjAwLjAwMFoiLCJwaG9uZSI6IisxMjM0NTY3ODkiLCJlbWFpbCI6InRlc3R1c2VyQGV4YW1wbGUuY29tIiwicGFzc3dvcmRfaGFzaCI6IiQyYiQxMCRPaU5Hd084aXZCZzFPYjhmQi9PQXhPd3BtVTRVU3FJUTNxaldDM2MzUlpJQVZldHU2alFDMiIsImlzX3ZlcmlmaWVkIjpmYWxzZSwiY29tcGFueV9pZCI6NSwicm9sZV9pZCI6MSwiY3JlYXRlZF9hdCI6IjIwMjUtMDktMTVUMTM6NTc6MzUuODg3WiIsImlhdCI6MTc1Nzk0NDY2OCwiZXhwIjoxNzYwNTM2NjY4fQ.OsgnunidpE2eyCkR33WZEsY4LU5XUlP1drAONCbvSGI",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"loading_address\": {\r\n    \"place_id\": 173022111,\r\n    \"licence\": \"Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright\",\r\n    \"osm_type\": \"node\",\r\n    \"osm_id\": 296749753,\r\n    \"lat\": \"49.5682814\",\r\n    \"lon\": \"17.2464013\",\r\n    \"class\": \"place\",\r\n    \"type\": \"house\",\r\n    \"place_rank\": 30,\r\n    \"importance\": 0.000069853513389746,\r\n    \"addresstype\": \"place\",\r\n    \"name\": \"\",\r\n    \"display_name\": \"424/9, Topolová, Slavonín, Оломоуц, okres Olomouc, Оломоуцкий край, Центральная Моравия, 783 01, Чехия\",\r\n    \"address\": {\r\n      \"house_number\": \"424/9\",\r\n      \"road\": \"Topolová\",\r\n      \"suburb\": \"Slavonín\",\r\n      \"city\": \"Оломоуц\",\r\n      \"municipality\": \"okres Olomouc\",\r\n      \"ISO3166-2-lvl7\": \"CZ-712\",\r\n      \"county\": \"Оломоуцкий край\",\r\n      \"ISO3166-2-lvl6\": \"CZ-71\",\r\n      \"state\": \"Центральная Моравия\",\r\n      \"postcode\": \"783 01\",\r\n      \"country\": \"Чехия\",\r\n      \"country_code\": \"cz\"\r\n    },\r\n    \"boundingbox\": [\r\n      \"49.5682314\",\r\n      \"49.5683314\",\r\n      \"17.2463513\",\r\n      \"17.2464513\"\r\n    ]\r\n  },\r\n  \"unloading_address\": {\r\n    \"place_id\": 122811867,\r\n    \"licence\": \"Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright\",\r\n    \"osm_type\": \"node\",\r\n    \"osm_id\": 2320029574,\r\n    \"lat\": \"50.2420493\",\r\n    \"lon\": \"15.0865117\",\r\n    \"class\": \"place\",\r\n    \"type\": \"house\",\r\n    \"place_rank\": 30,\r\n    \"importance\": 0.000062089723048707,\r\n    \"addresstype\": \"place\",\r\n    \"name\": \"\",\r\n    \"display_name\": \"147, K Nádraží, Oskořínek, okres Nymburk, Центральная Чехия, 289 32, Чехия\",\r\n    \"address\": {\r\n      \"house_number\": \"147\",\r\n      \"road\": \"K Nádraží\",\r\n      \"suburb\": \"Oskořínek\",\r\n      \"village\": \"Oskořínek\",\r\n      \"municipality\": \"okres Nymburk\",\r\n      \"ISO3166-2-lvl7\": \"CZ-208\",\r\n      \"state\": \"Центральная Чехия\",\r\n      \"ISO3166-2-lvl4\": \"CZ-20\",\r\n      \"postcode\": \"289 32\",\r\n      \"country\": \"Чехия\",\r\n      \"country_code\": \"cz\"\r\n    },\r\n    \"boundingbox\": [\r\n      \"50.2419993\",\r\n      \"50.2420993\",\r\n      \"15.0864617\",\r\n      \"15.0865617\"\r\n    ]\r\n  },\r\n  \"loading_date\": \"2025-09-20T10:00:00Z\",\r\n  \"unloading_date\": \"2025-09-22T15:00:00Z\",\r\n  \"length\": 12.5,\r\n  \"height\": 2.5,\r\n  \"weight\": 1500,\r\n  \"volume\": 30,\r\n  \"cargo_type\": \"General cargo\",\r\n  \"extra_info\": \"Handle with care\",\r\n  \"price\": 5000,\r\n  \"currency\": \"EUR\",\r\n  \"payment_term_days\": 30,\r\n  \"vehicle_requirements\": \"Truck with lift\",\r\n  \"external_comment\": \"Customer prefers delivery in the morning\",\r\n  \"internal_comment\": \"Assign to trusted carrier\",\r\n  \"contact_user_id\": 4\r\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/order/2",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "order",
+            "2"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "New Request",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NCwibmFtZSI6IkpvaG4iLCJzdXJuYW1lIjoiRG9lIiwiYmlydGhkYXkiOiIxOTg5LTEyLTMxVDIzOjAwOjAwLjAwMFoiLCJwaG9uZSI6IisxMjM0NTY3ODkiLCJlbWFpbCI6InRlc3R1c2VyQGV4YW1wbGUuY29tIiwicGFzc3dvcmRfaGFzaCI6IiQyYiQxMCRPaU5Hd084aXZCZzFPYjhmQi9PQXhPd3BtVTRVU3FJUTNxaldDM2MzUlpJQVZldHU2alFDMiIsImlzX3ZlcmlmaWVkIjpmYWxzZSwiY29tcGFueV9pZCI6NSwicm9sZV9pZCI6MSwiY3JlYXRlZF9hdCI6IjIwMjUtMDktMTVUMTM6NTc6MzUuODg3WiIsImlhdCI6MTc1Nzk0NDY2OCwiZXhwIjoxNzYwNTM2NjY4fQ.OsgnunidpE2eyCkR33WZEsY4LU5XUlP1drAONCbvSGI",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"loading_address\": {\r\n    \"place_id\": 173022111,\r\n    \"licence\": \"Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright\",\r\n    \"osm_type\": \"node\",\r\n    \"osm_id\": 296749753,\r\n    \"lat\": \"49.5682814\",\r\n    \"lon\": \"17.2464013\",\r\n    \"class\": \"place\",\r\n    \"type\": \"house\",\r\n    \"place_rank\": 30,\r\n    \"importance\": 0.000069853513389746,\r\n    \"addresstype\": \"place\",\r\n    \"name\": \"\",\r\n    \"display_name\": \"424/9, Topolová, Slavonín, Оломоуц, okres Olomouc, Оломоуцкий край, Центральная Моравия, 783 01, Чехия\",\r\n    \"address\": {\r\n      \"house_number\": \"424/9\",\r\n      \"road\": \"Topolová\",\r\n      \"suburb\": \"Slavonín\",\r\n      \"city\": \"Оломоуц\",\r\n      \"municipality\": \"okres Olomouc\",\r\n      \"ISO3166-2-lvl7\": \"CZ-712\",\r\n      \"county\": \"Оломоуцкий край\",\r\n      \"ISO3166-2-lvl6\": \"CZ-71\",\r\n      \"state\": \"Центральная Моравия\",\r\n      \"postcode\": \"783 01\",\r\n      \"country\": \"Чехия\",\r\n      \"country_code\": \"cz\"\r\n    },\r\n    \"boundingbox\": [\r\n      \"49.5682314\",\r\n      \"49.5683314\",\r\n      \"17.2463513\",\r\n      \"17.2464513\"\r\n    ]\r\n  },\r\n  \"unloading_address\": {\r\n    \"place_id\": 122811867,\r\n    \"licence\": \"Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright\",\r\n    \"osm_type\": \"node\",\r\n    \"osm_id\": 2320029574,\r\n    \"lat\": \"50.2420493\",\r\n    \"lon\": \"15.0865117\",\r\n    \"class\": \"place\",\r\n    \"type\": \"house\",\r\n    \"place_rank\": 30,\r\n    \"importance\": 0.000062089723048707,\r\n    \"addresstype\": \"place\",\r\n    \"name\": \"\",\r\n    \"display_name\": \"147, K Nádraží, Oskořínek, okres Nymburk, Центральная Чехия, 289 32, Чехия\",\r\n    \"address\": {\r\n      \"house_number\": \"147\",\r\n      \"road\": \"K Nádraží\",\r\n      \"suburb\": \"Oskořínek\",\r\n      \"village\": \"Oskořínek\",\r\n      \"municipality\": \"okres Nymburk\",\r\n      \"ISO3166-2-lvl7\": \"CZ-208\",\r\n      \"state\": \"Центральная Чехия\",\r\n      \"ISO3166-2-lvl4\": \"CZ-20\",\r\n      \"postcode\": \"289 32\",\r\n      \"country\": \"Чехия\",\r\n      \"country_code\": \"cz\"\r\n    },\r\n    \"boundingbox\": [\r\n      \"50.2419993\",\r\n      \"50.2420993\",\r\n      \"15.0864617\",\r\n      \"15.0865617\"\r\n    ]\r\n  },\r\n  \"loading_date\": \"2025-09-20T10:00:00Z\",\r\n  \"unloading_date\": \"2025-09-22T15:00:00Z\",\r\n  \"length\": 12.5,\r\n  \"height\": 2.5,\r\n  \"weight\": 1500,\r\n  \"volume\": 30,\r\n  \"cargo_type\": \"General cargo\",\r\n  \"extra_info\": \"Handle with care\",\r\n  \"price\": 5000,\r\n  \"currency\": \"EUR\",\r\n  \"payment_term_days\": 30,\r\n  \"vehicle_requirements\": \"Truck with lift\",\r\n  \"external_comment\": \"Customer prefers delivery in the morning\",\r\n  \"internal_comment\": \"Assign to trusted carrier\",\r\n  \"contact_user_id\": 4\r\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/order/2",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "order",
+            "2"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "New Request",
+      "request": {
+        "method": "GET",
+        "header": []
+      },
+      "response": []
+    },
+    {
+      "name": "New Request",
+      "request": {
+        "method": "GET",
+        "header": []
+      },
+      "response": []
+    }
+  ]
+}
